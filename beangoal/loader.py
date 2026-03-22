@@ -1,0 +1,57 @@
+from datetime import date
+from decimal import Decimal
+
+from beancount import loader
+from beancount.core.data import Custom
+
+from beangoal.models import Config, Goal
+
+
+def load_config(goals_file: str) -> Config:
+    entries, errors, _ = loader.load_file(goals_file)
+
+    goals_map: dict[str, Goal] = {}
+    cash_accounts: list[str] = []
+    expense_roots: list[str] = []
+    income_roots: list[str] = []
+    expense_excludes: list[str] = []
+
+    for entry in entries:
+        if not isinstance(entry, Custom):
+            continue
+
+        t = entry.type
+        vals = [v.value for v in entry.values]
+
+        if t == "savings-goal":
+            name, target, deadline = vals[0], Decimal(vals[1]), date.fromisoformat(vals[2])
+            goals_map[name] = Goal(name=name, target=target, deadline=deadline)
+
+        elif t == "savings-goal-archived":
+            name, target, deadline = vals[0], Decimal(vals[1]), date.fromisoformat(vals[2])
+            goals_map[name] = Goal(name=name, target=target, deadline=deadline, archived=True)
+
+        elif t == "cash-account":
+            cash_accounts.append(vals[0])
+
+        elif t == "expense-accounts":
+            expense_roots.append(vals[0])
+
+        elif t == "income-accounts":
+            income_roots.append(vals[0])
+
+        elif t == "expense-exclude":
+            expense_excludes.append(vals[0])
+
+        elif t == "goal-account":
+            goal_name, account = vals[0], vals[1]
+            if goal_name in goals_map:
+                goals_map[goal_name].linked_accounts.append(account)
+
+    return Config(
+        goals=list(goals_map.values()),
+        cash_accounts=cash_accounts,
+        expense_roots=expense_roots,
+        income_roots=income_roots,
+        expense_excludes=expense_excludes,
+    )

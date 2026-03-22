@@ -1,0 +1,5 @@
+[tools]
+python = "3.12"
+
+[env]
+VIRTUAL_ENV = "{{cwd}}/.venv"

@@ -1,0 +1,25 @@
+; ── Savings goals ──────────────────────────────────────────────
+2024-01-01 custom "savings-goal" "house-down-payment" "100000" "2027-06-01"
+2024-01-01 custom "savings-goal" "college-fund"       "200000" "2036-09-01"
+2024-01-01 custom "savings-goal" "car"                "15000"  "2026-12-01"
+
+; ── Archived goals ─────────────────────────────────────────────
+; 2023-06-01 custom "savings-goal-archived" "emergency-fund" "25000" "2023-01-01"
+
+; ── Cash accounts ──────────────────────────────────────────────
+2024-01-01 custom "cash-account" "Assets:Checking"
+2024-01-01 custom "cash-account" "Assets:Savings:HYSA"
+2024-01-01 custom "cash-account" "Liabilities:CreditCard:Chase"
+
+; ── Expense and income account roots ───────────────────────────
+2024-01-01 custom "expense-accounts" "Expenses"
+2024-01-01 custom "income-accounts"  "Income"
+
+; ── Expense exclusions ─────────────────────────────────────────
+2024-01-01 custom "expense-exclude" "Expenses:Taxes"
+2024-01-01 custom "expense-exclude" "Expenses:Transfers"
+
+; ── Goal-to-account links ──────────────────────────────────────
+2024-01-01 custom "goal-account" "house-down-payment" "Assets:Savings:HYSA"
+2024-01-01 custom "goal-account" "college-fund"       "Assets:Investments:529"
+2024-01-01 custom "goal-account" "car"                "Assets:Savings:HYSA"
