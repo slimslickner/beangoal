@@ -1,4 +1,3 @@
-import os
 import tempfile
 import textwrap
 from pathlib import Path
@@ -30,6 +29,11 @@ def test_status_exits_zero(runner):
     assert result.exit_code == 0
 
 
+def test_status_shows_pool_total(runner):
+    result = invoke(runner, "status")
+    assert "Pool" in result.output
+
+
 def test_status_shows_goal_names(runner):
     result = invoke(runner, "status")
     assert "house-down-payment" in result.output
@@ -42,13 +46,18 @@ def test_status_shows_progress_bar(runner):
     assert "█" in result.output
 
 
+def test_status_shows_manual_and_auto_labels(runner):
+    result = invoke(runner, "status")
+    assert "manual" in result.output  # college-fund has contributions
+    assert "auto" in result.output    # house and car are auto
+
+
 def test_status_hides_archived_by_default(runner):
     result = invoke(runner, "status")
     assert "Archived" not in result.output
 
 
 def test_status_show_archived_flag(runner):
-    # The example goals file has an archived goal commented out; use a temp file.
     goals = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
     goals.write(textwrap.dedent("""\
         2024-01-01 custom "savings-goal"          "house" "100000" "2027-06-01"
@@ -62,6 +71,14 @@ def test_status_show_archived_flag(runner):
     assert result.exit_code == 0
     assert "Archived" in result.output
     assert "done" in result.output
+
+
+def test_status_show_contributions_flag(runner):
+    result = invoke(runner, "status", "--show-contributions")
+    assert result.exit_code == 0
+    # college-fund has contributions — individual dates should appear
+    assert "2024-06-01" in result.output
+    assert "2024-12-01" in result.output
 
 
 # ── surplus ───────────────────────────────────────────────────────────────────
@@ -85,7 +102,6 @@ def test_surplus_buffer_months_flag(runner):
     r6 = invoke(runner, "--buffer-months", "6", "surplus")
     assert r1.exit_code == 0
     assert r6.exit_code == 0
-    # Higher buffer → lower surplus; the surplus line should differ
     assert r1.output != r6.output
 
 
@@ -105,6 +121,11 @@ def test_allocate_shows_amount(runner):
 def test_allocate_shows_transaction(runner):
     result = invoke(runner, "allocate", "1000")
     assert "Savings allocation" in result.output
+
+
+def test_allocate_shows_goal_allocation_directives(runner):
+    result = invoke(runner, "allocate", "1000")
+    assert 'goal-allocation' in result.output
 
 
 def test_allocate_no_eligible_goals(runner):

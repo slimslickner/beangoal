@@ -1,9 +1,9 @@
 from datetime import date
 from decimal import Decimal
 
+from rich import box
 from rich.console import Console
 from rich.table import Table
-from rich import box
 
 from beangoal.models import Goal
 
@@ -19,7 +19,9 @@ def render_progress_bar(fraction: float, width: int = 12) -> str:
 def render_status(
     goals: list[Goal],
     balances: dict[str, Decimal],
+    pool_total: Decimal,
     show_archived: bool = False,
+    show_contributions: bool = False,
     today: date | None = None,
 ) -> None:
     if today is None:
@@ -28,12 +30,15 @@ def render_status(
     active = [g for g in goals if not g.archived]
     archived = [g for g in goals if g.archived]
 
+    console.print(f"\n  Pool: [bold cyan]${pool_total:,.2f}[/bold cyan]\n")
+
     def render_group(group: list[Goal], dim: bool = False) -> None:
         for goal in group:
             current = balances.get(goal.name, Decimal("0"))
             fraction = float(current / goal.target) if goal.target else 0.0
             pct = int(fraction * 100)
             bar = render_progress_bar(fraction)
+            label = "[dim]manual[/dim]" if goal.is_manual else "[dim]auto[/dim]"
 
             deadline_passed = goal.deadline < today
             if deadline_passed and fraction >= 1.0:
@@ -42,10 +47,6 @@ def render_status(
                 short = goal.target - current
                 status_str = f"[red]MISSED (${short:,.0f} short) ✗[/red]"
             else:
-                # on pace check
-                goal_created = date(goal.deadline.year - 3, goal.deadline.month, goal.deadline.day)
-                # We don't have goal creation date, use a rough heuristic:
-                # compare fraction funded vs fraction of time elapsed
                 total_days = (goal.deadline - date(today.year - 1, today.month, today.day)).days
                 elapsed = (today - date(today.year - 1, today.month, today.day)).days
                 time_fraction = elapsed / total_days if total_days > 0 else 1.0
@@ -58,9 +59,14 @@ def render_status(
             console.print(
                 f"  [bold]{goal.name:<22}[/bold] {bar}  {pct:>3}%"
                 f"   [cyan]${current:>10,.0f}[/cyan] / [cyan]${goal.target:>10,.0f}[/cyan]"
-                f"   deadline: {goal.deadline.isoformat()}   {status_str}",
+                f"   {label}   deadline: {goal.deadline.isoformat()}   {status_str}",
                 style=style,
             )
+
+            if show_contributions and goal.is_manual and not dim:
+                for contrib_date, amount in goal.contributions:
+                    console.print(f"    [dim]{contrib_date.isoformat()}   +${amount:>10,.2f}[/dim]")
+                console.print(f"    [dim]{'':>30} = ${goal.manual_balance:>10,.2f}[/dim]")
 
     render_group(active)
 

@@ -6,8 +6,8 @@ import click
 from beancount import loader as beancount_loader
 from rich.console import Console
 
-from beangoal.allocator import compute_urgency_scores_with_balances
-from beangoal.ledger import get_account_balance, get_avg_monthly_expenses, get_cash_total
+from beangoal.allocator import compute_urgency_scores_with_balances, distribute_pool
+from beangoal.ledger import get_avg_monthly_expenses, get_cash_total
 from beangoal.loader import load_config
 from beangoal.report import console, render_status, render_surplus
 
@@ -42,8 +42,9 @@ def cli(ctx: click.Context, ledger: str, goals: str, currency: str, trailing_mon
 
 @cli.command()
 @click.option("--show-archived", is_flag=True, default=False)
+@click.option("--show-contributions", is_flag=True, default=False, help="List individual contributions for manual goals")
 @click.pass_context
-def status(ctx: click.Context, show_archived: bool) -> None:
+def status(ctx: click.Context, show_archived: bool, show_contributions: bool) -> None:
     """Show progress for each active goal."""
     obj = ctx.obj
     entries = obj["entries"]
@@ -52,16 +53,17 @@ def status(ctx: click.Context, show_archived: bool) -> None:
     currency = obj["currency"]
 
     today = date.today()
-    balances: dict[str, Decimal] = {}
+    pool_total = get_cash_total(entries, options, config.cash_accounts, currency)
+    attributed = distribute_pool(config.goals, pool_total, today)
 
-    for goal in config.goals:
-        total = Decimal("0")
-        for account in goal.linked_accounts:
-            bal = get_account_balance(entries, options, account, currency)
-            total += bal
-        balances[goal.name] = total
-
-    render_status(config.goals, balances, show_archived=show_archived, today=today)
+    render_status(
+        config.goals,
+        attributed,
+        pool_total=pool_total,
+        show_archived=show_archived,
+        show_contributions=show_contributions,
+        today=today,
+    )
 
 
 @cli.command()
@@ -96,62 +98,53 @@ def allocate(ctx: click.Context, amount: Decimal) -> None:
     currency = obj["currency"]
 
     today = date.today()
-    balances: dict[str, Decimal] = {}
-
-    for goal in config.goals:
-        total = Decimal("0")
-        for account in goal.linked_accounts:
-            bal = get_account_balance(entries, options, account, currency)
-            total += bal
-        balances[goal.name] = total
-
-    scores = compute_urgency_scores_with_balances(config.goals, balances, today)
+    pool_total = get_cash_total(entries, options, config.cash_accounts, currency)
+    attributed = distribute_pool(config.goals, pool_total, today)
+    scores = compute_urgency_scores_with_balances(config.goals, attributed, today)
 
     if not scores:
         console.print("No active goals to allocate to.")
         return
+
+    allocations: dict[str, Decimal] = {
+        name: (weight * amount).quantize(Decimal("0.01"))
+        for name, weight in scores.items()
+    }
 
     active_goals = {g.name: g for g in config.goals if not g.archived and g.deadline > today}
 
     console.print(f"\n  Suggested allocation of [bold]${amount:,.2f}[/bold]:")
     console.print("  " + "─" * 54)
 
-    allocations: dict[str, Decimal] = {}
-    for name, weight in scores.items():
-        allocations[name] = (weight * amount).quantize(Decimal("0.01"))
-
     for name, alloc in allocations.items():
         goal = active_goals[name]
-        current = balances.get(name, Decimal("0"))
+        current = attributed.get(name, Decimal("0"))
         days_left = (goal.deadline - today).days
         pct = int(float(alloc / amount) * 100) if amount else 0
         funded_pct = int(float(current / goal.target) * 100) if goal.target else 0
+        label = "manual" if goal.is_manual else "auto"
         console.print(
             f"  [bold]{name:<22}[/bold]  [cyan]${alloc:>10,.2f}[/cyan]  ({pct}%)"
-            f"   {days_left} days left, {funded_pct}% funded"
+            f"   {days_left} days left, {funded_pct}% funded  [{label}]"
         )
 
-    # Group by destination account
-    console.print()
-    console.print("  Paste into your ledger:")
-    console.print()
-
-    account_allocs: dict[str, list[tuple[str, Decimal]]] = {}
-    for name, alloc in allocations.items():
-        goal = active_goals[name]
-        # Use last linked account as destination (or first)
-        dest = goal.linked_accounts[0] if goal.linked_accounts else "Assets:Savings"
-        account_allocs.setdefault(dest, []).append((name, alloc))
-
+    # Ledger transaction — single pool deposit, user adjusts destination
     source = config.cash_accounts[0] if config.cash_accounts else "Assets:Checking"
     today_str = today.isoformat()
 
+    console.print()
+    console.print("  Paste into your ledger:")
+    console.print()
     console.print(f'  {today_str} * "Savings allocation"')
-    for account, items in account_allocs.items():
-        names_comment = " + ".join(n for n, _ in items)
-        acct_total = sum(a for _, a in items)
-        console.print(f"    {account:<40} {acct_total:>10,.2f} {currency}   ; {names_comment}")
+    console.print(f"    {source:<40} {amount:>10,.2f} {currency}   ; adjust destination as needed")
     console.print(f"    {source:<40} {-amount:>10,.2f} {currency}   ; adjust source as needed")
+
+    # goal-allocation directives
+    console.print()
+    console.print("  Paste into goals.beancount:")
+    console.print()
+    for name, alloc in allocations.items():
+        console.print(f'  {today_str} custom "goal-allocation" "{name}" "{alloc}"')
     console.print()
 
 

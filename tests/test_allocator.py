@@ -3,15 +3,27 @@ from decimal import Decimal
 
 import pytest
 
-from beangoal.allocator import compute_urgency_scores_with_balances
+from beangoal.allocator import compute_urgency_scores_with_balances, distribute_pool
 from beangoal.models import Goal
 
 
 TODAY = date(2026, 3, 22)
 
 
-def make_goal(name: str, target: float, deadline: date, archived: bool = False) -> Goal:
-    return Goal(name=name, target=Decimal(str(target)), deadline=deadline, archived=archived)
+def make_goal(
+    name: str,
+    target: float,
+    deadline: date,
+    archived: bool = False,
+    contributions: list[tuple[date, float]] | None = None,
+) -> Goal:
+    g = Goal(name=name, target=Decimal(str(target)), deadline=deadline, archived=archived)
+    if contributions:
+        g.contributions = [(d, Decimal(str(a))) for d, a in contributions]
+    return g
+
+
+# ── compute_urgency_scores_with_balances ──────────────────────────────────────
 
 
 def test_single_goal_gets_full_weight():
@@ -35,7 +47,7 @@ def test_archived_goals_excluded():
 def test_past_deadline_excluded():
     goals = [
         make_goal("house", 100_000, date(2027, 6, 1)),
-        make_goal("old", 5_000, date(2025, 1, 1)),  # past
+        make_goal("old", 5_000, date(2025, 1, 1)),
     ]
     balances = {"house": Decimal("0"), "old": Decimal("0")}
     scores = compute_urgency_scores_with_balances(goals, balances, TODAY)
@@ -48,7 +60,7 @@ def test_fully_funded_goal_excluded():
         make_goal("house", 100_000, date(2027, 6, 1)),
         make_goal("car", 15_000, date(2026, 12, 1)),
     ]
-    balances = {"house": Decimal("0"), "car": Decimal("15000")}  # car fully funded
+    balances = {"house": Decimal("0"), "car": Decimal("15000")}
     scores = compute_urgency_scores_with_balances(goals, balances, TODAY)
     assert "car" not in scores
     assert "house" in scores
@@ -60,21 +72,16 @@ def test_scores_sum_to_one():
         make_goal("college", 200_000, date(2036, 9, 1)),
         make_goal("car", 15_000, date(2026, 12, 1)),
     ]
-    balances = {
-        "house": Decimal("67000"),
-        "college": Decimal("36000"),
-        "car": Decimal("5000"),
-    }
+    balances = {"house": Decimal("67000"), "college": Decimal("36000"), "car": Decimal("5000")}
     scores = compute_urgency_scores_with_balances(goals, balances, TODAY)
     total = sum(scores.values())
     assert abs(total - Decimal("1")) < Decimal("0.0001")
 
 
 def test_closer_deadline_gets_higher_weight():
-    """A goal with a closer deadline and same gap fraction should score higher."""
     goals = [
-        make_goal("urgent", 10_000, date(2026, 6, 1)),   # ~70 days away
-        make_goal("distant", 10_000, date(2028, 6, 1)),  # ~800 days away
+        make_goal("urgent", 10_000, date(2026, 6, 1)),
+        make_goal("distant", 10_000, date(2028, 6, 1)),
     ]
     balances = {"urgent": Decimal("5000"), "distant": Decimal("5000")}
     scores = compute_urgency_scores_with_balances(goals, balances, TODAY)
@@ -82,7 +89,6 @@ def test_closer_deadline_gets_higher_weight():
 
 
 def test_larger_gap_gets_higher_weight():
-    """Same deadline, bigger remaining gap → higher score."""
     goals = [
         make_goal("big-gap", 100_000, date(2027, 6, 1)),
         make_goal("small-gap", 100_000, date(2027, 6, 1)),
@@ -104,3 +110,88 @@ def test_all_fully_funded_returns_empty():
     balances = {"house": Decimal("100000")}
     scores = compute_urgency_scores_with_balances(goals, balances, TODAY)
     assert scores == {}
+
+
+# ── distribute_pool ───────────────────────────────────────────────────────────
+
+
+def test_all_auto_goals_split_remaining_pool():
+    goals = [
+        make_goal("house", 100_000, date(2027, 6, 1)),
+        make_goal("car", 15_000, date(2026, 12, 1)),
+    ]
+    attributed = distribute_pool(goals, Decimal("50000"), TODAY)
+    # Both are auto; pool should be fully distributed (sums to pool_total)
+    total = sum(attributed.values())
+    assert abs(total - Decimal("50000")) < Decimal("0.01")
+
+
+def test_auto_closer_deadline_gets_more():
+    goals = [
+        make_goal("urgent", 10_000, date(2026, 6, 1)),   # closer
+        make_goal("distant", 10_000, date(2028, 6, 1)),  # farther
+    ]
+    attributed = distribute_pool(goals, Decimal("10000"), TODAY)
+    assert attributed["urgent"] > attributed["distant"]
+
+
+def test_manual_goal_gets_its_exact_balance():
+    goals = [
+        make_goal("college", 200_000, date(2036, 9, 1), contributions=[(date(2024, 6, 1), 36_000)]),
+        make_goal("house", 100_000, date(2027, 6, 1)),
+    ]
+    attributed = distribute_pool(goals, Decimal("100000"), TODAY)
+    assert attributed["college"] == Decimal("36000")
+    # house gets the remaining 64000
+    assert abs(attributed["house"] - Decimal("64000")) < Decimal("0.01")
+
+
+def test_manual_goals_prorated_when_exceed_pool():
+    """If manual allocations sum to more than the pool, they're prorated."""
+    goals = [
+        make_goal("a", 100_000, date(2027, 6, 1), contributions=[(date(2024, 1, 1), 60_000)]),
+        make_goal("b", 100_000, date(2027, 6, 1), contributions=[(date(2024, 1, 1), 60_000)]),
+    ]
+    pool = Decimal("100000")
+    attributed = distribute_pool(goals, pool, TODAY)
+    # Both have equal manual balance so should each get 50000
+    assert abs(attributed["a"] - Decimal("50000")) < Decimal("0.01")
+    assert abs(attributed["b"] - Decimal("50000")) < Decimal("0.01")
+    total = sum(attributed.values())
+    assert abs(total - pool) < Decimal("0.01")
+
+
+def test_archived_goals_excluded_from_distribution():
+    goals = [
+        make_goal("house", 100_000, date(2027, 6, 1)),
+        make_goal("old", 5_000, date(2025, 1, 1), archived=True),
+    ]
+    attributed = distribute_pool(goals, Decimal("50000"), TODAY)
+    assert "old" not in attributed
+    assert "house" in attributed
+
+
+def test_past_deadline_auto_goal_gets_zero():
+    goals = [
+        make_goal("house", 100_000, date(2027, 6, 1)),
+        make_goal("missed", 10_000, date(2025, 1, 1)),  # past, auto
+    ]
+    attributed = distribute_pool(goals, Decimal("50000"), TODAY)
+    assert attributed["missed"] == Decimal("0")
+    # house gets the full pool since missed is excluded from scoring
+    assert abs(attributed["house"] - Decimal("50000")) < Decimal("0.01")
+
+
+def test_multiple_manual_contributions_use_sum():
+    goals = [
+        make_goal(
+            "college", 200_000, date(2036, 9, 1),
+            contributions=[
+                (date(2024, 6, 1), 10_000),
+                (date(2024, 12, 1), 8_000),
+                (date(2025, 6, 1), 9_000),
+            ],
+        ),
+    ]
+    attributed = distribute_pool(goals, Decimal("100000"), TODAY)
+    assert attributed["college"] == Decimal("27000")

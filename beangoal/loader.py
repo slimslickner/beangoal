@@ -43,10 +43,11 @@ def load_config(goals_file: str) -> Config:
         elif t == "expense-exclude":
             expense_excludes.append(vals[0])
 
-        elif t == "goal-account":
-            goal_name, account = vals[0], vals[1]
+        elif t == "goal-allocation":
+            goal_name = vals[0]
+            amount = Decimal(vals[1])
             if goal_name in goals_map:
-                goals_map[goal_name].linked_accounts.append(account)
+                goals_map[goal_name].contributions.append((entry.date, amount))
 
     return Config(
         goals=list(goals_map.values()),

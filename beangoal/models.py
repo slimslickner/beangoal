@@ -8,8 +8,16 @@ class Goal:
     name: str
     target: Decimal
     deadline: date
-    linked_accounts: list[str] = field(default_factory=list)
+    contributions: list[tuple[date, Decimal]] = field(default_factory=list)
     archived: bool = False
+
+    @property
+    def manual_balance(self) -> Decimal:
+        return sum((amount for _, amount in self.contributions), Decimal("0"))
+
+    @property
+    def is_manual(self) -> bool:
+        return bool(self.contributions)
 
 
 @dataclass

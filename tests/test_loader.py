@@ -78,32 +78,47 @@ def test_expense_excludes():
     assert config.expense_excludes == ["Expenses:Taxes", "Expenses:Transfers"]
 
 
-def test_goal_account_links():
+def test_goal_allocation_single():
     path = write_goals("""
-        2024-01-01 custom "savings-goal"  "house" "100000" "2027-06-01"
-        2024-01-01 custom "goal-account"  "house" "Assets:Savings:HYSA"
+        2024-01-01 custom "savings-goal"    "college" "200000" "2036-09-01"
+        2024-06-01 custom "goal-allocation" "college" "10000"
     """)
     config = load_config(path)
-    assert config.goals[0].linked_accounts == ["Assets:Savings:HYSA"]
+    g = config.goals[0]
+    assert g.is_manual is True
+    assert g.manual_balance == Decimal("10000")
+    assert len(g.contributions) == 1
+    assert g.contributions[0] == (date(2024, 6, 1), Decimal("10000"))
 
 
-def test_goal_account_multiple_links():
+def test_goal_allocation_multiple_contributions_accumulate():
     path = write_goals("""
-        2024-01-01 custom "savings-goal"  "house" "100000" "2027-06-01"
-        2024-01-01 custom "goal-account"  "house" "Assets:Savings:HYSA"
-        2024-01-01 custom "goal-account"  "house" "Assets:Investments:Brokerage"
+        2024-01-01 custom "savings-goal"    "college" "200000" "2036-09-01"
+        2024-06-01 custom "goal-allocation" "college" "10000"
+        2024-12-01 custom "goal-allocation" "college" "8000"
+        2025-06-01 custom "goal-allocation" "college" "9000"
     """)
     config = load_config(path)
-    assert config.goals[0].linked_accounts == [
-        "Assets:Savings:HYSA",
-        "Assets:Investments:Brokerage",
-    ]
+    g = config.goals[0]
+    assert g.manual_balance == Decimal("27000")
+    assert len(g.contributions) == 3
+    dates = [d for d, _ in g.contributions]
+    assert dates == [date(2024, 6, 1), date(2024, 12, 1), date(2025, 6, 1)]
 
 
-def test_goal_account_for_unknown_goal_is_ignored():
-    """goal-account referencing a nonexistent goal should not crash."""
+def test_goal_without_allocation_is_auto():
     path = write_goals("""
-        2024-01-01 custom "goal-account" "nonexistent" "Assets:Checking"
+        2024-01-01 custom "savings-goal" "house" "100000" "2027-06-01"
+    """)
+    config = load_config(path)
+    assert config.goals[0].is_manual is False
+    assert config.goals[0].manual_balance == Decimal("0")
+    assert config.goals[0].contributions == []
+
+
+def test_goal_allocation_for_unknown_goal_is_ignored():
+    path = write_goals("""
+        2024-01-01 custom "goal-allocation" "nonexistent" "5000"
     """)
     config = load_config(path)
     assert config.goals == []
@@ -121,21 +136,30 @@ def test_empty_goals_file():
 
 def test_full_config():
     path = write_goals("""
-        2024-01-01 custom "savings-goal"         "house"  "100000" "2027-06-01"
-        2024-01-01 custom "savings-goal-archived" "car"    "15000"  "2025-01-01"
+        2024-01-01 custom "savings-goal"          "house"   "100000" "2027-06-01"
+        2024-01-01 custom "savings-goal"          "college" "200000" "2036-09-01"
+        2024-01-01 custom "savings-goal-archived" "car"     "15000"  "2025-01-01"
         2024-01-01 custom "cash-account"          "Assets:Checking"
         2024-01-01 custom "expense-accounts"      "Expenses"
         2024-01-01 custom "income-accounts"       "Income"
         2024-01-01 custom "expense-exclude"       "Expenses:Taxes"
-        2024-01-01 custom "goal-account"          "house"  "Assets:Savings:HYSA"
+        2024-06-01 custom "goal-allocation"       "college" "10000"
+        2024-12-01 custom "goal-allocation"       "college" "8000"
     """)
     config = load_config(path)
-    assert len(config.goals) == 2
+    assert len(config.goals) == 3
     active = [g for g in config.goals if not g.archived]
     archived = [g for g in config.goals if g.archived]
-    assert len(active) == 1
+    assert len(active) == 2
     assert len(archived) == 1
-    assert active[0].linked_accounts == ["Assets:Savings:HYSA"]
+
+    college = next(g for g in active if g.name == "college")
+    assert college.manual_balance == Decimal("18000")
+    assert len(college.contributions) == 2
+
+    house = next(g for g in active if g.name == "house")
+    assert house.is_manual is False
+
     assert config.cash_accounts == ["Assets:Checking"]
     assert config.expense_roots == ["Expenses"]
     assert config.income_roots == ["Income"]

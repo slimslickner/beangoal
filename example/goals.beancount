@@ -1,25 +1,38 @@
 ; ── Savings goals ──────────────────────────────────────────────
+; Format: "savings-goal" <name> <target-amount> <deadline>
 2024-01-01 custom "savings-goal" "house-down-payment" "100000" "2027-06-01"
 2024-01-01 custom "savings-goal" "college-fund"       "200000" "2036-09-01"
 2024-01-01 custom "savings-goal" "car"                "15000"  "2026-12-01"
 
 ; ── Archived goals ─────────────────────────────────────────────
+; Format: "savings-goal-archived" <name> <target-amount> <deadline>
+; Add manually or via: beangoal archive <name>
 ; 2023-06-01 custom "savings-goal-archived" "emergency-fund" "25000" "2023-01-01"
 
 ; ── Cash accounts ──────────────────────────────────────────────
+; All accounts whose balances form the savings pool
 2024-01-01 custom "cash-account" "Assets:Checking"
 2024-01-01 custom "cash-account" "Assets:Savings:HYSA"
+2024-01-01 custom "cash-account" "Assets:Investments:529"
 2024-01-01 custom "cash-account" "Liabilities:CreditCard:Chase"
 
 ; ── Expense and income account roots ───────────────────────────
+; Used to compute average monthly expenses for the operating buffer
 2024-01-01 custom "expense-accounts" "Expenses"
 2024-01-01 custom "income-accounts"  "Income"
 
 ; ── Expense exclusions ─────────────────────────────────────────
+; Sub-trees excluded from the expense average (taxes, transfers, etc.)
 2024-01-01 custom "expense-exclude" "Expenses:Taxes"
 2024-01-01 custom "expense-exclude" "Expenses:Transfers"
 
-; ── Goal-to-account links ──────────────────────────────────────
-2024-01-01 custom "goal-account" "house-down-payment" "Assets:Savings:HYSA"
-2024-01-01 custom "goal-account" "college-fund"       "Assets:Investments:529"
-2024-01-01 custom "goal-account" "car"                "Assets:Savings:HYSA"
+; ── Manual goal allocations ────────────────────────────────────
+; Each entry records a dated contribution to a specific goal.
+; Goals with no entries are distributed automatically from the pool.
+; Format: "goal-allocation" <goal-name> <amount>
+;
+; college-fund is manually tracked; house and car are auto-distributed.
+2024-06-01 custom "goal-allocation" "college-fund" "10000"
+2024-12-01 custom "goal-allocation" "college-fund" "8000"
+2025-06-01 custom "goal-allocation" "college-fund" "9000"
+2026-01-01 custom "goal-allocation" "college-fund" "9000"
