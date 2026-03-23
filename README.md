@@ -135,6 +135,17 @@ include "goals.beancount"
 ```
 
 ```beancount
+; ── Cash accounts (savings pool) ────────────────────────────────
+; Tag each open directive with beangoal-cash-account: TRUE to include it
+2020-01-01 open Assets:Checking              USD
+  beangoal-cash-account: TRUE
+2020-01-01 open Assets:Savings:HYSA          USD
+  beangoal-cash-account: TRUE
+2020-01-01 open Assets:Investments:529       USD
+  beangoal-cash-account: TRUE
+2020-01-01 open Liabilities:CreditCard:Chase USD
+  beangoal-cash-account: TRUE
+
 ; ── Savings goals ──────────────────────────────────────────────
 ; Format: "savings-goal" <name> <target-amount> <deadline>
 2024-01-01 custom "savings-goal" "house-down-payment" "100000" "2027-06-01"
@@ -144,13 +155,6 @@ include "goals.beancount"
 ; ── Archived goals ─────────────────────────────────────────────
 ; Format: "savings-goal-archived" <name> <target-amount> <deadline>
 ; 2023-06-01 custom "savings-goal-archived" "emergency-fund" "25000" "2023-01-01"
-
-; ── Cash accounts ──────────────────────────────────────────────
-; All accounts whose balances form the savings pool
-2024-01-01 custom "cash-account" "Assets:Checking"
-2024-01-01 custom "cash-account" "Assets:Savings:HYSA"
-2024-01-01 custom "cash-account" "Assets:Investments:529"
-2024-01-01 custom "cash-account" "Liabilities:CreditCard:Chase"
 
 ; ── Expense and income account roots ───────────────────────────
 2024-01-01 custom "expense-accounts" "Expenses"
@@ -177,15 +181,15 @@ include "goals.beancount"
 
 | Directive | Args | Purpose |
 |---|---|---|
+| `open` (with `beangoal-cash-account: TRUE`) | — | Account included in the savings pool |
 | `savings-goal` | name, target, deadline | Active goal |
 | `savings-goal-archived` | name, target, deadline | Archived goal (hidden from default views) |
-| `cash-account` | account | Account included in the savings pool |
 | `expense-accounts` | account root | Root of expense account tree |
 | `income-accounts` | account root | Root of income account tree |
 | `expense-exclude` | account | Sub-tree excluded from expense average |
 | `goal-allocation` | goal-name, amount | Dated manual contribution to a goal |
 
-See `example/goals.beancount` for a full working example.
+See `example/ledger.beancount` for a full working example.
 
 ## Running tests
 

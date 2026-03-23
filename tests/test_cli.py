@@ -59,9 +59,10 @@ def test_status_hides_archived_by_default(runner):
 def test_status_show_archived_flag(runner):
     ledger = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
     ledger.write(textwrap.dedent("""\
+        2020-01-01 open Assets:Checking USD
+          beangoal-cash-account: TRUE
         2024-01-01 custom "savings-goal"          "house" "100000" "2027-06-01"
         2024-01-01 custom "savings-goal-archived" "done"  "5000"   "2023-01-01"
-        2024-01-01 custom "cash-account"          "Assets:Checking"
         2024-01-01 custom "expense-accounts"      "Expenses"
     """))
     ledger.flush()
@@ -131,8 +132,9 @@ def test_allocate_no_eligible_goals(runner):
     """All goals archived → graceful message."""
     ledger = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
     ledger.write(textwrap.dedent("""\
+        2020-01-01 open Assets:Checking USD
+          beangoal-cash-account: TRUE
         2024-01-01 custom "savings-goal-archived" "old" "5000" "2023-01-01"
-        2024-01-01 custom "cash-account" "Assets:Checking"
         2024-01-01 custom "expense-accounts" "Expenses"
     """))
     ledger.flush()

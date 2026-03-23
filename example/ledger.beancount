@@ -2,10 +2,15 @@ option "title" "Example Ledger"
 option "operating_currency" "USD"
 
 ; ── Account declarations ───────────────────────────────────────
+; Accounts tagged beangoal-cash-account: TRUE are included in the savings pool
 2020-01-01 open Assets:Checking              USD
+  beangoal-cash-account: TRUE
 2020-01-01 open Assets:Savings:HYSA          USD
+  beangoal-cash-account: TRUE
 2020-01-01 open Assets:Investments:529       USD
+  beangoal-cash-account: TRUE
 2020-01-01 open Liabilities:CreditCard:Chase USD
+  beangoal-cash-account: TRUE
 2020-01-01 open Income:Salary                USD
 2020-01-01 open Expenses:Food                USD
 2020-01-01 open Expenses:Housing             USD
@@ -108,12 +113,6 @@ option "operating_currency" "USD"
 
 ; Archived goals: "savings-goal-archived" <name> <target> <deadline>
 ; 2023-06-01 custom "savings-goal-archived" "emergency-fund" "25000" "2023-01-01"
-
-; Accounts that form the savings pool
-2024-01-01 custom "cash-account" "Assets:Checking"
-2024-01-01 custom "cash-account" "Assets:Savings:HYSA"
-2024-01-01 custom "cash-account" "Assets:Investments:529"
-2024-01-01 custom "cash-account" "Liabilities:CreditCard:Chase"
 
 ; Expense/income roots for operating buffer calculation
 2024-01-01 custom "expense-accounts" "Expenses"

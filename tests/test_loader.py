@@ -42,10 +42,22 @@ def test_multiple_goals():
 
 def test_cash_accounts_parsed():
     config = load("""\
-        2024-01-01 custom "cash-account" "Assets:Checking"
-        2024-01-01 custom "cash-account" "Assets:Savings:HYSA"
+        2020-01-01 open Assets:Checking         USD
+          beangoal-cash-account: TRUE
+        2020-01-01 open Assets:Savings:HYSA     USD
+          beangoal-cash-account: TRUE
+        2020-01-01 open Assets:Investments:529  USD
     """)
     assert config.cash_accounts == ["Assets:Checking", "Assets:Savings:HYSA"]
+
+
+def test_cash_account_without_flag_excluded():
+    config = load("""\
+        2020-01-01 open Assets:Checking     USD
+        2020-01-01 open Assets:Savings:HYSA USD
+          beangoal-cash-account: TRUE
+    """)
+    assert config.cash_accounts == ["Assets:Savings:HYSA"]
 
 
 def test_expense_and_income_roots():
@@ -113,10 +125,11 @@ def test_empty_entries():
 
 def test_full_config():
     config = load("""\
+        2020-01-01 open Assets:Checking USD
+          beangoal-cash-account: TRUE
         2024-01-01 custom "savings-goal"          "house"   "100000" "2027-06-01"
         2024-01-01 custom "savings-goal"          "college" "200000" "2036-09-01"
         2024-01-01 custom "savings-goal-archived" "car"     "15000"  "2025-01-01"
-        2024-01-01 custom "cash-account"          "Assets:Checking"
         2024-01-01 custom "expense-accounts"      "Expenses"
         2024-01-01 custom "income-accounts"       "Income"
         2024-01-01 custom "expense-exclude"       "Expenses:Taxes"

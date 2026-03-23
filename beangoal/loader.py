@@ -1,7 +1,7 @@
 from decimal import Decimal
 from datetime import date
 
-from beancount.core.data import Custom
+from beancount.core.data import Custom, Open
 
 from beangoal.models import Config, Goal
 
@@ -14,6 +14,10 @@ def load_config(entries) -> Config:
     expense_excludes: list[str] = []
 
     for entry in entries:
+        if isinstance(entry, Open) and entry.meta.get("beangoal-cash-account"):
+            cash_accounts.append(entry.account)
+            continue
+
         if not isinstance(entry, Custom):
             continue
 
@@ -27,9 +31,6 @@ def load_config(entries) -> Config:
         elif t == "savings-goal-archived":
             name, target, deadline = vals[0], Decimal(vals[1]), date.fromisoformat(vals[2])
             goals_map[name] = Goal(name=name, target=target, deadline=deadline, archived=True)
-
-        elif t == "cash-account":
-            cash_accounts.append(vals[0])
 
         elif t == "expense-accounts":
             expense_roots.append(vals[0])
