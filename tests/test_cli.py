@@ -9,7 +9,6 @@ from beangoal.cli import cli
 
 EXAMPLE_DIR = Path(__file__).parent.parent / "example"
 LEDGER = str(EXAMPLE_DIR / "ledger.beancount")
-GOALS = str(EXAMPLE_DIR / "goals.beancount")
 
 
 @pytest.fixture
@@ -18,7 +17,7 @@ def runner():
 
 
 def invoke(runner, *args):
-    return runner.invoke(cli, ["--ledger", LEDGER, "--goals", GOALS, *args])
+    return runner.invoke(cli, ["--ledger", LEDGER, *args])
 
 
 # ── status ────────────────────────────────────────────────────────────────────
@@ -58,16 +57,16 @@ def test_status_hides_archived_by_default(runner):
 
 
 def test_status_show_archived_flag(runner):
-    goals = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
-    goals.write(textwrap.dedent("""\
+    ledger = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
+    ledger.write(textwrap.dedent("""\
         2024-01-01 custom "savings-goal"          "house" "100000" "2027-06-01"
         2024-01-01 custom "savings-goal-archived" "done"  "5000"   "2023-01-01"
         2024-01-01 custom "cash-account"          "Assets:Checking"
         2024-01-01 custom "expense-accounts"      "Expenses"
     """))
-    goals.flush()
+    ledger.flush()
 
-    result = runner.invoke(cli, ["--ledger", LEDGER, "--goals", goals.name, "status", "--show-archived"])
+    result = runner.invoke(cli, ["--ledger", ledger.name, "status", "--show-archived"])
     assert result.exit_code == 0
     assert "Archived" in result.output
     assert "done" in result.output
@@ -130,15 +129,15 @@ def test_allocate_shows_goal_allocation_directives(runner):
 
 def test_allocate_no_eligible_goals(runner):
     """All goals archived → graceful message."""
-    goals = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
-    goals.write(textwrap.dedent("""\
+    ledger = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
+    ledger.write(textwrap.dedent("""\
         2024-01-01 custom "savings-goal-archived" "old" "5000" "2023-01-01"
         2024-01-01 custom "cash-account" "Assets:Checking"
         2024-01-01 custom "expense-accounts" "Expenses"
     """))
-    goals.flush()
+    ledger.flush()
 
-    result = runner.invoke(cli, ["--ledger", LEDGER, "--goals", goals.name, "allocate", "1000"])
+    result = runner.invoke(cli, ["--ledger", ledger.name, "allocate", "1000"])
     assert result.exit_code == 0
     assert "No active goals" in result.output
 
@@ -168,10 +167,5 @@ def test_archive_unknown_goal_exits_nonzero(runner):
 
 
 def test_missing_ledger_exits_nonzero(runner):
-    result = runner.invoke(cli, ["--ledger", "/nonexistent/path.beancount", "--goals", GOALS, "status"])
-    assert result.exit_code != 0
-
-
-def test_missing_goals_exits_nonzero(runner):
-    result = runner.invoke(cli, ["--ledger", LEDGER, "--goals", "/nonexistent/goals.beancount", "status"])
+    result = runner.invoke(cli, ["--ledger", "/nonexistent/path.beancount", "status"])
     assert result.exit_code != 0

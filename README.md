@@ -33,12 +33,12 @@ uv run beangoal --help
 
 ## Usage
 
-All commands take `--ledger` (required) and `--goals` (defaults to `goals.beancount`) as global options, passed before the subcommand.
+All commands take `--ledger` (required) as a global option, passed before the subcommand. beangoal reads its configuration directly from the ledger — put your `custom` directives in your main ledger file or use beancount's `include` directive to pull them in from a separate file.
 
 ### Show goal progress
 
 ```bash
-uv run beangoal --ledger ledger.beancount --goals goals.beancount status
+uv run beangoal --ledger ledger.beancount status
 ```
 
 ```
@@ -54,7 +54,7 @@ Flags:
 - `--show-contributions` — list each dated contribution under manual goals
 
 ```bash
-uv run beangoal --ledger ledger.beancount --goals goals.beancount status --show-contributions
+uv run beangoal --ledger ledger.beancount status --show-contributions
 ```
 
 ```
@@ -69,7 +69,7 @@ uv run beangoal --ledger ledger.beancount --goals goals.beancount status --show-
 ### Show allocatable surplus
 
 ```bash
-uv run beangoal --ledger ledger.beancount --goals goals.beancount surplus
+uv run beangoal --ledger ledger.beancount surplus
 ```
 
 ```
@@ -85,7 +85,7 @@ Computes pool total minus an operating buffer (default: 3 months of average expe
 ### Suggest an allocation
 
 ```bash
-uv run beangoal --ledger ledger.beancount --goals goals.beancount allocate 2000
+uv run beangoal --ledger ledger.beancount allocate 2000
 ```
 
 ```
@@ -111,7 +111,7 @@ The transaction is a template — adjust source and destination accounts as need
 ### Archive a goal
 
 ```bash
-uv run beangoal --ledger ledger.beancount --goals goals.beancount archive house-down-payment
+uv run beangoal --ledger ledger.beancount archive house-down-payment
 ```
 
 Prints the directive change to make in your goals file — nothing is written automatically.
@@ -121,14 +121,18 @@ Prints the directive change to make in your goals file — nothing is written au
 | Option | Default | Description |
 |---|---|---|
 | `--ledger` | required | Path to main beancount ledger |
-| `--goals` | `goals.beancount` | Path to goals file |
 | `--currency` | `USD` | Currency for all computations |
 | `--trailing-months` | `6` | Window for average expense calculation |
 | `--buffer-months` | `3` | Operating buffer multiplier |
 
-## Goals file format
+## Configuration format
 
-A separate beancount file using `custom` directives. Keep it alongside your main ledger and pass it via `--goals`.
+beangoal reads `custom` directives directly from your ledger. You can inline them in your main ledger file, or keep them in a separate file and pull it in with beancount's `include` directive:
+
+```beancount
+; ledger.beancount
+include "goals.beancount"
+```
 
 ```beancount
 ; ── Savings goals ──────────────────────────────────────────────

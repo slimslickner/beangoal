@@ -16,12 +16,11 @@ err_console = Console(stderr=True)
 
 @click.group()
 @click.option("--ledger", required=True, type=click.Path(exists=True), help="Path to main beancount ledger")
-@click.option("--goals", default="goals.beancount", show_default=True, type=click.Path(exists=True), help="Path to goals file")
 @click.option("--currency", default="USD", show_default=True)
 @click.option("--trailing-months", default=6, show_default=True, type=int)
 @click.option("--buffer-months", default=3, show_default=True, type=int)
 @click.pass_context
-def cli(ctx: click.Context, ledger: str, goals: str, currency: str, trailing_months: int, buffer_months: int) -> None:
+def cli(ctx: click.Context, ledger: str, currency: str, trailing_months: int, buffer_months: int) -> None:
     """beangoal — savings goals tracking for beancount v3"""
     ctx.ensure_object(dict)
 
@@ -30,7 +29,7 @@ def cli(ctx: click.Context, ledger: str, goals: str, currency: str, trailing_mon
         for err in errors:
             print(f"Warning: {err}", file=sys.stderr)
 
-    config = load_config(goals)
+    config = load_config(entries)
 
     ctx.obj["entries"] = entries
     ctx.obj["options"] = options

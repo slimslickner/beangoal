@@ -1,15 +1,12 @@
-from datetime import date
 from decimal import Decimal
+from datetime import date
 
-from beancount import loader
 from beancount.core.data import Custom
 
 from beangoal.models import Config, Goal
 
 
-def load_config(goals_file: str) -> Config:
-    entries, errors, _ = loader.load_file(goals_file)
-
+def load_config(entries) -> Config:
     goals_map: dict[str, Goal] = {}
     cash_accounts: list[str] = []
     expense_roots: list[str] = []
