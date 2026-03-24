@@ -50,9 +50,15 @@ def status(ctx: click.Context, show_archived: bool, show_contributions: bool) ->
     options = obj["options"]
     config = obj["config"]
     currency = obj["currency"]
+    trailing_months = obj["trailing_months"]
+    buffer_months = obj["buffer_months"]
 
     today = date.today()
-    pool_total = get_cash_total(entries, options, config.cash_accounts, currency)
+    cash_total = get_cash_total(entries, options, config.cash_accounts, currency)
+    avg_expenses = get_avg_monthly_expenses(
+        entries, options, config.expense_roots, config.expense_excludes, trailing_months, currency
+    )
+    pool_total = max(cash_total - avg_expenses * buffer_months, Decimal("0"))
     attributed = distribute_pool(config.goals, pool_total, today)
 
     render_status(
@@ -95,9 +101,15 @@ def allocate(ctx: click.Context, amount: Decimal) -> None:
     options = obj["options"]
     config = obj["config"]
     currency = obj["currency"]
+    trailing_months = obj["trailing_months"]
+    buffer_months = obj["buffer_months"]
 
     today = date.today()
-    pool_total = get_cash_total(entries, options, config.cash_accounts, currency)
+    cash_total = get_cash_total(entries, options, config.cash_accounts, currency)
+    avg_expenses = get_avg_monthly_expenses(
+        entries, options, config.expense_roots, config.expense_excludes, trailing_months, currency
+    )
+    pool_total = max(cash_total - avg_expenses * buffer_months, Decimal("0"))
     attributed = distribute_pool(config.goals, pool_total, today)
     scores = compute_urgency_scores_with_balances(config.goals, attributed, today)
 
