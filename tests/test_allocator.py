@@ -182,6 +182,37 @@ def test_past_deadline_auto_goal_gets_zero():
     assert abs(attributed["house"] - Decimal("50000")) < Decimal("0.01")
 
 
+def test_auto_goal_capped_at_target_excess_redistributed():
+    """A small-target urgent goal should not receive more than its target."""
+    goals = [
+        make_goal("house", 100_000, date(2030, 5, 1)),       # large target, far deadline
+        make_goal("fridge", 1_200, date(2026, 12, 1)),        # small target, near deadline
+    ]
+    attributed = distribute_pool(goals, Decimal("117609"), TODAY)
+    assert attributed["fridge"] <= Decimal("1200")
+    assert attributed["house"] <= Decimal("100000")
+    # Both goals can be fully funded; excess stays in pool (unallocated)
+    total = sum(attributed.values())
+    assert total <= Decimal("117609")
+
+
+def test_multiple_auto_goals_capped_excess_redistributed():
+    """Multiple small-target urgent goals should all be capped; excess goes to larger goals."""
+    goals = [
+        make_goal("house", 80_000, date(2030, 5, 1)),
+        make_goal("car", 40_000, date(2028, 9, 1)),
+        make_goal("fridge", 1_200, date(2026, 12, 1)),
+        make_goal("dishwasher", 700, date(2026, 12, 1)),
+    ]
+    attributed = distribute_pool(goals, Decimal("117609"), TODAY)
+    assert attributed["fridge"] <= Decimal("1200")
+    assert attributed["dishwasher"] <= Decimal("700")
+    assert attributed["car"] <= Decimal("40000")
+    assert attributed["house"] <= Decimal("80000")
+    total = sum(attributed.values())
+    assert abs(total - Decimal("117609")) < Decimal("0.01")
+
+
 def test_multiple_manual_contributions_use_sum():
     goals = [
         make_goal(

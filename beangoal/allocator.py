@@ -43,7 +43,7 @@ def distribute_pool(
     reserved = sum(attributed.values())
     remaining = max(pool_total - reserved, Decimal("0"))
 
-    # Pass 2: auto goals — weight by 1/days_remaining
+    # Pass 2: auto goals — weight by 1/days_remaining, capped at target
     scores: dict[str, Decimal] = {}
     for g in auto:
         if g.deadline <= today:
@@ -53,12 +53,36 @@ def distribute_pool(
             continue
         scores[g.name] = Decimal("1") / Decimal(str(days_remaining))
 
-    total_score = sum(scores.values())
+    # Initialize all auto goals to zero
     for g in auto:
-        if g.name in scores and total_score > 0:
-            attributed[g.name] = (scores[g.name] / total_score) * remaining
-        else:
-            attributed[g.name] = Decimal("0")
+        attributed[g.name] = Decimal("0")
+
+    # Iteratively allocate, capping each goal at its target and redistributing excess
+    pool = remaining
+    active_scores = dict(scores)
+    while active_scores and pool > 0:
+        total_score = sum(active_scores.values())
+        newly_capped: list[str] = []
+        shares: dict[str, Decimal] = {}
+        for name, score in active_scores.items():
+            shares[name] = (score / total_score) * pool
+
+        for g in auto:
+            if g.name not in active_scores:
+                continue
+            share = shares[g.name]
+            if share >= g.target:
+                attributed[g.name] = g.target
+                pool -= g.target
+                newly_capped.append(g.name)
+            else:
+                attributed[g.name] = share
+
+        if not newly_capped:
+            break
+        for name in newly_capped:
+            del active_scores[name]
+        pool = max(pool, Decimal("0"))
 
     return attributed
 

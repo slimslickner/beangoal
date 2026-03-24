@@ -9,7 +9,7 @@ Reads a beancount ledger and a goals file to track progress toward savings goals
 All savings accounts are treated as a single **pool**. Goals draw from that pool in one of two ways:
 
 - **Manual** — you record dated `goal-allocation` entries in your goals file. The sum of all entries for a goal is its current balance. This gives you a full history of contributions over time.
-- **Auto** — goals with no allocation entries are distributed from whatever pool balance remains after manual goals are reserved. The split is weighted by urgency: closer deadline and larger remaining gap = higher share.
+- **Auto** — goals with no allocation entries are distributed from whatever pool balance remains after manual goals are reserved. The split is weighted by urgency: closer deadline and larger remaining gap = higher share. Each goal is capped at its target; any excess is redistributed to the remaining goals. If the pool exceeds the sum of all targets, the surplus stays unallocated in the pool.
 
 Nothing is ever written to your files automatically. Every command prints what to paste.
 
@@ -44,9 +44,9 @@ uv run beangoal --ledger ledger.beancount status
 ```
   Pool: $137,900.00
 
-  house-down-payment     ████░░░░░░░░   37%   $    37,511 / $   100,000   auto    deadline: 2027-06-01   behind  ✗
+  house-down-payment     ██████████░░   86%   $    86,900 / $   100,000   auto    deadline: 2027-06-01   on pace ✓
   college-fund           ██░░░░░░░░░░   18%   $    36,000 / $   200,000   manual  deadline: 2036-09-01   on pace ✓
-  car                    ████████████  429%   $    64,389 / $    15,000   auto    deadline: 2026-12-01   on pace ✓
+  car                    ████████████  100%   $    15,000 / $    15,000   auto    deadline: 2026-12-01   on pace ✓
 ```
 
 Flags:
@@ -58,12 +58,14 @@ uv run beangoal --ledger ledger.beancount status --show-contributions
 ```
 
 ```
+  house-down-payment     ██████████░░   86%   $    86,900 / $   100,000   auto    deadline: 2027-06-01   on pace ✓
   college-fund           ██░░░░░░░░░░   18%   $    36,000 / $   200,000   manual  deadline: 2036-09-01   on pace ✓
     2024-06-01   +$ 10,000.00
     2024-12-01   +$  8,000.00
     2025-06-01   +$  9,000.00
     2026-01-01   +$  9,000.00
                                = $ 36,000.00
+  car                    ████████████  100%   $    15,000 / $    15,000   auto    deadline: 2026-12-01   on pace ✓
 ```
 
 ### Show allocatable surplus
