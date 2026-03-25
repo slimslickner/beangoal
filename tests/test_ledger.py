@@ -5,7 +5,6 @@ from beancount import loader as beancount_loader
 
 from beangoal.ledger import get_account_balance, get_avg_monthly_expenses, get_cash_total
 
-
 LEDGER = """\
 option "operating_currency" "USD"
 
@@ -158,14 +157,18 @@ def test_avg_monthly_expenses_excludes_taxes(ledger, monkeypatch):
     today = 2026-03-01, start = 2026-03-01 - 180 days = 2025-09-02.
     All six months of test data (Sep–Feb) fall within the window.
     """
-    import beangoal.ledger as ledger_mod
     from datetime import date
 
-    monkeypatch.setattr(ledger_mod, "date", type("_D", (), {"today": staticmethod(lambda: date(2026, 3, 1))})())
+    import beangoal.ledger as ledger_mod
+
+    monkeypatch.setattr(
+        ledger_mod, "date", type("_D", (), {"today": staticmethod(lambda: date(2026, 3, 1))})()
+    )
 
     entries, options = ledger
     avg = get_avg_monthly_expenses(
-        entries, options,
+        entries,
+        options,
         expense_roots=["Expenses"],
         excludes=["Expenses:Taxes"],
         trailing_months=6,
@@ -176,14 +179,18 @@ def test_avg_monthly_expenses_excludes_taxes(ledger, monkeypatch):
 
 def test_avg_monthly_expenses_includes_taxes(ledger, monkeypatch):
     """Without exclusions, taxes are included: (18600 + 6000) / 6 = 4100."""
-    import beangoal.ledger as ledger_mod
     from datetime import date
 
-    monkeypatch.setattr(ledger_mod, "date", type("_D", (), {"today": staticmethod(lambda: date(2026, 3, 1))})())
+    import beangoal.ledger as ledger_mod
+
+    monkeypatch.setattr(
+        ledger_mod, "date", type("_D", (), {"today": staticmethod(lambda: date(2026, 3, 1))})()
+    )
 
     entries, options = ledger
     avg = get_avg_monthly_expenses(
-        entries, options,
+        entries,
+        options,
         expense_roots=["Expenses"],
         excludes=[],
         trailing_months=6,

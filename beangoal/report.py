@@ -91,7 +91,7 @@ def render_surplus(
     table.add_column()
 
     table.add_row("Cash accounts total:", f"${cash_total:,.2f}", "")
-    table.add_row("Avg monthly expenses:", f"${avg_expenses:,.2f}", f"(trailing months)")
+    table.add_row("Avg monthly expenses:", f"${avg_expenses:,.2f}", "(trailing months)")
     table.add_row(f"Operating buffer ({buffer_months} mo):", f"${buffer:,.2f}", "")
     table.add_section()
     table.add_row(

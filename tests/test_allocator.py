@@ -1,11 +1,8 @@
 from datetime import date
 from decimal import Decimal
 
-import pytest
-
 from beangoal.allocator import compute_urgency_scores_with_balances, distribute_pool
 from beangoal.models import Goal
-
 
 TODAY = date(2026, 3, 22)
 
@@ -128,7 +125,7 @@ def test_all_auto_goals_split_remaining_pool():
 
 def test_auto_closer_deadline_gets_more():
     goals = [
-        make_goal("urgent", 10_000, date(2026, 6, 1)),   # closer
+        make_goal("urgent", 10_000, date(2026, 6, 1)),  # closer
         make_goal("distant", 10_000, date(2028, 6, 1)),  # farther
     ]
     attributed = distribute_pool(goals, Decimal("10000"), TODAY)
@@ -185,8 +182,8 @@ def test_past_deadline_auto_goal_gets_zero():
 def test_auto_goal_capped_at_target_excess_redistributed():
     """A small-target urgent goal should not receive more than its target."""
     goals = [
-        make_goal("house", 100_000, date(2030, 5, 1)),       # large target, far deadline
-        make_goal("fridge", 1_200, date(2026, 12, 1)),        # small target, near deadline
+        make_goal("house", 100_000, date(2030, 5, 1)),  # large target, far deadline
+        make_goal("fridge", 1_200, date(2026, 12, 1)),  # small target, near deadline
     ]
     attributed = distribute_pool(goals, Decimal("117609"), TODAY)
     assert attributed["fridge"] <= Decimal("1200")
@@ -216,7 +213,9 @@ def test_multiple_auto_goals_capped_excess_redistributed():
 def test_multiple_manual_contributions_use_sum():
     goals = [
         make_goal(
-            "college", 200_000, date(2036, 9, 1),
+            "college",
+            200_000,
+            date(2036, 9, 1),
             contributions=[
                 (date(2024, 6, 1), 10_000),
                 (date(2024, 12, 1), 8_000),

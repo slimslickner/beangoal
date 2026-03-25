@@ -48,7 +48,7 @@ def test_status_shows_progress_bar(runner):
 def test_status_shows_manual_and_auto_labels(runner):
     result = invoke(runner, "status")
     assert "manual" in result.output  # college-fund has contributions
-    assert "auto" in result.output    # house and car are auto
+    assert "auto" in result.output  # house and car are auto
 
 
 def test_status_hides_archived_by_default(runner):
@@ -58,13 +58,15 @@ def test_status_hides_archived_by_default(runner):
 
 def test_status_show_archived_flag(runner):
     ledger = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
-    ledger.write(textwrap.dedent("""\
+    ledger.write(
+        textwrap.dedent("""\
         2020-01-01 open Assets:Checking USD
           beangoal-cash-account: TRUE
         2024-01-01 custom "savings-goal"          "house" "100000" "2027-06-01"
         2024-01-01 custom "savings-goal-archived" "done"  "5000"   "2023-01-01"
         2024-01-01 custom "expense-accounts"      "Expenses"
-    """))
+    """)
+    )
     ledger.flush()
 
     result = runner.invoke(cli, ["--ledger", ledger.name, "status", "--show-archived"])
@@ -125,18 +127,20 @@ def test_allocate_shows_transaction(runner):
 
 def test_allocate_shows_goal_allocation_directives(runner):
     result = invoke(runner, "allocate", "1000")
-    assert 'goal-allocation' in result.output
+    assert "goal-allocation" in result.output
 
 
 def test_allocate_no_eligible_goals(runner):
     """All goals archived → graceful message."""
     ledger = tempfile.NamedTemporaryFile(mode="w", suffix=".beancount", delete=False)
-    ledger.write(textwrap.dedent("""\
+    ledger.write(
+        textwrap.dedent("""\
         2020-01-01 open Assets:Checking USD
           beangoal-cash-account: TRUE
         2024-01-01 custom "savings-goal-archived" "old" "5000" "2023-01-01"
         2024-01-01 custom "expense-accounts" "Expenses"
-    """))
+    """)
+    )
     ledger.flush()
 
     result = runner.invoke(cli, ["--ledger", ledger.name, "allocate", "1000"])

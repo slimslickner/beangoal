@@ -5,7 +5,7 @@ from decimal import Decimal
 from beancount import loader as beancount_loader
 
 from beangoal.loader import load_config
-from beangoal.models import Config, Goal
+from beangoal.models import Config
 
 
 def load(content: str) -> Config:
@@ -99,7 +99,11 @@ def test_goal_allocation_multiple_contributions_accumulate():
     g = config.goals[0]
     assert g.manual_balance == Decimal("27000")
     assert len(g.contributions) == 3
-    assert [d for d, _ in g.contributions] == [date(2024, 6, 1), date(2024, 12, 1), date(2025, 6, 1)]
+    assert [d for d, _ in g.contributions] == [
+        date(2024, 6, 1),
+        date(2024, 12, 1),
+        date(2025, 6, 1),
+    ]
 
 
 def test_goal_without_allocation_is_auto():

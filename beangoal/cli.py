@@ -15,12 +15,16 @@ err_console = Console(stderr=True)
 
 
 @click.group()
-@click.option("--ledger", required=True, type=click.Path(exists=True), help="Path to main beancount ledger")
+@click.option(
+    "--ledger", required=True, type=click.Path(exists=True), help="Path to main beancount ledger"
+)
 @click.option("--currency", default="USD", show_default=True)
 @click.option("--trailing-months", default=6, show_default=True, type=int)
 @click.option("--buffer-months", default=3, show_default=True, type=int)
 @click.pass_context
-def cli(ctx: click.Context, ledger: str, currency: str, trailing_months: int, buffer_months: int) -> None:
+def cli(
+    ctx: click.Context, ledger: str, currency: str, trailing_months: int, buffer_months: int
+) -> None:
     """beangoal — savings goals tracking for beancount v3"""
     ctx.ensure_object(dict)
 
@@ -41,7 +45,12 @@ def cli(ctx: click.Context, ledger: str, currency: str, trailing_months: int, bu
 
 @cli.command()
 @click.option("--show-archived", is_flag=True, default=False)
-@click.option("--show-contributions", is_flag=True, default=False, help="List individual contributions for manual goals")
+@click.option(
+    "--show-contributions",
+    is_flag=True,
+    default=False,
+    help="List individual contributions for manual goals",
+)
 @click.pass_context
 def status(ctx: click.Context, show_archived: bool, show_contributions: bool) -> None:
     """Show progress for each active goal."""
@@ -118,8 +127,7 @@ def allocate(ctx: click.Context, amount: Decimal) -> None:
         return
 
     allocations: dict[str, Decimal] = {
-        name: (weight * amount).quantize(Decimal("0.01"))
-        for name, weight in scores.items()
+        name: (weight * amount).quantize(Decimal("0.01")) for name, weight in scores.items()
     }
 
     active_goals = {g.name: g for g in config.goals if not g.archived and g.deadline > today}
@@ -172,15 +180,17 @@ def archive(ctx: click.Context, goal_name: str) -> None:
         raise SystemExit(1)
 
     date_str = "2024-01-01"  # placeholder — user sets the date
-    console.print(f"\n  To archive this goal, replace in goals.beancount:\n")
-    console.print(f"  REMOVE:")
+    console.print("\n  To archive this goal, replace in goals.beancount:\n")
+    console.print("  REMOVE:")
     console.print(
-        f'  {date_str} custom "savings-goal" "{goal.name}" "{goal.target}" "{goal.deadline.isoformat()}"'
+        f'  {date_str} custom "savings-goal"'
+        f'"{goal.name}" "{goal.target}" "{goal.deadline.isoformat()}"'
     )
     console.print()
-    console.print(f"  ADD:")
+    console.print("  ADD:")
     console.print(
-        f'  {date_str} custom "savings-goal-archived" "{goal.name}" "{goal.target}" "{goal.deadline.isoformat()}"'
+        f'  {date_str} custom "savings-goal-archived"'
+        f'"{goal.name}" "{goal.target}" "{goal.deadline.isoformat()}"'
     )
     console.print()
     console.print("  Archived goals are hidden from `status` by default.")
