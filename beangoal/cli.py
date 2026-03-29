@@ -51,8 +51,14 @@ def cli(
     default=False,
     help="List individual contributions for manual goals",
 )
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Show pool breakdown and per-goal allocation detail",
+)
 @click.pass_context
-def status(ctx: click.Context, show_archived: bool, show_contributions: bool) -> None:
+def status(ctx: click.Context, show_archived: bool, show_contributions: bool, verbose: bool) -> None:
     """Show progress for each active goal."""
     obj = ctx.obj
     entries = obj["entries"]
@@ -79,6 +85,10 @@ def status(ctx: click.Context, show_archived: bool, show_contributions: bool) ->
         show_archived=show_archived,
         show_contributions=show_contributions,
         today=today,
+        verbose=verbose,
+        cash_total=cash_total,
+        avg_expenses=avg_expenses,
+        buffer_months=buffer_months,
     )
 
 

@@ -23,6 +23,10 @@ def render_status(
     show_archived: bool = False,
     show_contributions: bool = False,
     today: date | None = None,
+    verbose: bool = False,
+    cash_total: Decimal | None = None,
+    avg_expenses: Decimal | None = None,
+    buffer_months: int | None = None,
 ) -> None:
     if today is None:
         today = date.today()
@@ -30,7 +34,20 @@ def render_status(
     active = [g for g in goals if not g.archived]
     archived = [g for g in goals if g.archived]
 
-    console.print(f"\n  Pool: [bold cyan]${pool_total:,.2f}[/bold cyan]\n")
+    if verbose and cash_total is not None and avg_expenses is not None and buffer_months is not None:
+        buffer = avg_expenses * buffer_months
+        console.print(
+            f"\n  Pool: [bold cyan]${pool_total:,.2f}[/bold cyan]"
+            f"  [dim](cash ${cash_total:,.2f} − {buffer_months}mo buffer ${buffer:,.2f})[/dim]\n"
+        )
+    else:
+        console.print(f"\n  Pool: [bold cyan]${pool_total:,.2f}[/bold cyan]\n")
+
+    # Compute normalized pool weights for auto goals (for verbose display)
+    auto_active = [g for g in active if not g.is_manual and g.deadline > today and (g.deadline - today).days > 0]
+    raw_weights = {g.name: Decimal("1") / Decimal(str((g.deadline - today).days)) for g in auto_active}
+    total_weight = sum(raw_weights.values())
+    pool_weights = {name: w / total_weight for name, w in raw_weights.items()} if total_weight else {}
 
     def render_group(group: list[Goal], dim: bool = False) -> None:
         for goal in group:
@@ -63,10 +80,15 @@ def render_status(
                 style=style,
             )
 
-            if show_contributions and goal.is_manual and not dim:
-                for contrib_date, amount in goal.contributions:
-                    console.print(f"    [dim]{contrib_date.isoformat()}   +${amount:>10,.2f}[/dim]")
-                console.print(f"    [dim]{'':>30} = ${goal.manual_balance:>10,.2f}[/dim]")
+            if not dim and (show_contributions or verbose):
+                if goal.is_manual:
+                    for contrib_date, amount in goal.contributions:
+                        console.print(f"    [dim]{contrib_date.isoformat()}   +${amount:>10,.2f}[/dim]")
+                    console.print(f"    [dim]{'':>30} = ${goal.manual_balance:>10,.2f}[/dim]")
+                elif verbose and goal.name in pool_weights:
+                    days_remaining = (goal.deadline - today).days
+                    weight_pct = int(pool_weights[goal.name] * 100)
+                    console.print(f"    [dim]pool weight: {weight_pct}%  ({days_remaining} days remaining)[/dim]")
 
     render_group(active)
 
