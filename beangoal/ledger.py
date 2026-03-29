@@ -30,6 +30,48 @@ def get_cash_total(entries, options, cash_accounts: list[str], currency: str = "
     return total
 
 
+def get_avg_monthly_transfer_expenses(
+    entries,
+    options,
+    expense_transfer_accounts: list[str],
+    trailing_months: int = 6,
+    currency: str = "USD",
+) -> Decimal:
+    """
+    Compute average monthly expenses from transfers to designated accounts,
+    identified by the presence of matched_transfer_account posting metadata
+    (set by the beancount zerosum plugin).
+    """
+    if not expense_transfer_accounts:
+        return Decimal("0")
+
+    end = date.today()
+    start = end - timedelta(days=trailing_months * 30)
+
+    account_filter = " OR ".join(f"account = '{a}'" for a in expense_transfer_accounts)
+    where = (
+        f"({account_filter})"
+        f" AND date >= {start.isoformat()} AND date <= {end.isoformat()}"
+        f" AND currency = '{currency}'"
+    )
+
+    try:
+        _, rows = query.run_query(
+            entries,
+            options,
+            f"SELECT sum(position) WHERE {where}",
+        )
+        total = Decimal("0")
+        if rows and rows[0][0] is not None:
+            pos = rows[0][0].get_only_position()
+            if pos is not None:
+                total = Decimal(str(pos.units.number))
+        return total / trailing_months
+    except Exception as e:
+        print(f"Warning: could not compute transfer expense average: {e}", file=sys.stderr)
+        return Decimal("0")
+
+
 def get_avg_monthly_expenses(
     entries,
     options,

@@ -27,3 +27,4 @@ class Config:
     expense_roots: list[str]
     income_roots: list[str]
     expense_excludes: list[str]
+    expense_transfer_accounts: list[str] = field(default_factory=list)

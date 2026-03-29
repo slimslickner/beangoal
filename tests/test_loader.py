@@ -118,6 +118,15 @@ def test_goal_allocation_for_unknown_goal_is_ignored():
     assert config.goals == []
 
 
+def test_expense_transfer_accounts_parsed():
+    config = load("""\
+        2020-01-01 open Assets:House      USD
+          beangoal-expense-transfer: TRUE
+        2020-01-01 open Assets:Brokerage  USD
+    """)
+    assert config.expense_transfer_accounts == ["Assets:House"]
+
+
 def test_empty_entries():
     config = load_config([])
     assert config.goals == []
@@ -125,6 +134,7 @@ def test_empty_entries():
     assert config.expense_roots == []
     assert config.income_roots == []
     assert config.expense_excludes == []
+    assert config.expense_transfer_accounts == []
 
 
 def test_full_config():

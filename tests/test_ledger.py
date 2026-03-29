@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from beancount import loader as beancount_loader
 
-from beangoal.ledger import get_account_balance, get_avg_monthly_expenses, get_cash_total
+from beangoal.ledger import get_account_balance, get_avg_monthly_expenses, get_avg_monthly_transfer_expenses, get_cash_total
 
 LEDGER = """\
 option "operating_currency" "USD"
@@ -104,6 +104,46 @@ option "operating_currency" "USD"
   Assets:Checking
 """
 
+LEDGER_WITH_TRANSFERS = """\
+option "operating_currency" "USD"
+
+2020-01-01 open Assets:Checking              USD
+2020-01-01 open Assets:House                 USD
+2020-01-01 open Assets:Brokerage             USD
+2020-01-01 open Equity:Opening               USD
+
+; $1000/mo transfer to house — should count as expense (no metadata needed)
+; Six transfers from Nov 2025–Apr 2026; today=2026-04-01, start=2025-10-02, all within window
+2025-11-01 * "House transfer"
+  Assets:House        1000.00 USD
+  Assets:Checking    -1000.00 USD
+
+2025-12-01 * "House transfer"
+  Assets:House        1000.00 USD
+  Assets:Checking    -1000.00 USD
+
+2026-01-01 * "House transfer"
+  Assets:House        1000.00 USD
+  Assets:Checking    -1000.00 USD
+
+2026-02-01 * "House transfer"
+  Assets:House        1000.00 USD
+  Assets:Checking    -1000.00 USD
+
+2026-03-01 * "House transfer"
+  Assets:House        1000.00 USD
+  Assets:Checking    -1000.00 USD
+
+2026-04-01 * "House transfer"
+  Assets:House        1000.00 USD
+  Assets:Checking    -1000.00 USD
+
+; Transfer to brokerage — NOT tagged as expense transfer, should be ignored
+2026-01-15 * "Brokerage transfer"
+  Assets:Brokerage    2000.00 USD
+  Assets:Checking    -2000.00 USD
+"""
+
 
 @pytest.fixture(scope="module")
 def ledger():
@@ -177,6 +217,12 @@ def test_avg_monthly_expenses_excludes_taxes(ledger, monkeypatch):
     assert avg == Decimal("3100")
 
 
+@pytest.fixture(scope="module")
+def ledger_with_transfers():
+    entries, errors, options = beancount_loader.load_string(LEDGER_WITH_TRANSFERS)
+    return entries, options
+
+
 def test_avg_monthly_expenses_includes_taxes(ledger, monkeypatch):
     """Without exclusions, taxes are included: (18600 + 6000) / 6 = 4100."""
     from datetime import date
@@ -197,3 +243,52 @@ def test_avg_monthly_expenses_includes_taxes(ledger, monkeypatch):
     )
     # (6 * 3100 + 6000) / 6 = 4100
     assert avg == Decimal("4100")
+
+
+def test_avg_monthly_transfer_expenses(ledger_with_transfers, monkeypatch):
+    """Transfers to Assets:House at $1000/mo average to $1000/mo."""
+    from datetime import date
+
+    import beangoal.ledger as ledger_mod
+
+    monkeypatch.setattr(
+        ledger_mod, "date", type("_D", (), {"today": staticmethod(lambda: date(2026, 4, 1))})()
+    )
+
+    entries, options = ledger_with_transfers
+    avg = get_avg_monthly_transfer_expenses(
+        entries,
+        options,
+        expense_transfer_accounts=["Assets:House"],
+        trailing_months=6,
+    )
+    # 6 * 1000 / 6 = 1000
+    assert avg == Decimal("1000")
+
+
+def test_avg_monthly_transfer_expenses_ignores_untagged_accounts(ledger_with_transfers, monkeypatch):
+    """Transfers to Assets:Brokerage are not counted when not in the list."""
+    from datetime import date
+
+    import beangoal.ledger as ledger_mod
+
+    monkeypatch.setattr(
+        ledger_mod, "date", type("_D", (), {"today": staticmethod(lambda: date(2026, 4, 1))})()
+    )
+
+    entries, options = ledger_with_transfers
+    avg = get_avg_monthly_transfer_expenses(
+        entries,
+        options,
+        expense_transfer_accounts=["Assets:House"],
+        trailing_months=6,
+    )
+    # Brokerage transfers are excluded — only house $1000/mo counts
+    assert avg == Decimal("1000")
+
+
+def test_avg_monthly_transfer_expenses_empty_list(ledger_with_transfers):
+    """Empty account list returns zero without querying."""
+    entries, options = ledger_with_transfers
+    avg = get_avg_monthly_transfer_expenses(entries, options, expense_transfer_accounts=[])
+    assert avg == Decimal("0")

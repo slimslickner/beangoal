@@ -7,7 +7,7 @@ from beancount import loader as beancount_loader
 from rich.console import Console
 
 from beangoal.allocator import compute_urgency_scores_with_balances, distribute_pool
-from beangoal.ledger import get_avg_monthly_expenses, get_cash_total
+from beangoal.ledger import get_avg_monthly_expenses, get_avg_monthly_transfer_expenses, get_cash_total
 from beangoal.loader import load_config
 from beangoal.report import console, render_status, render_surplus
 
@@ -66,6 +66,8 @@ def status(ctx: click.Context, show_archived: bool, show_contributions: bool) ->
     cash_total = get_cash_total(entries, options, config.cash_accounts, currency)
     avg_expenses = get_avg_monthly_expenses(
         entries, options, config.expense_roots, config.expense_excludes, trailing_months, currency
+    ) + get_avg_monthly_transfer_expenses(
+        entries, options, config.expense_transfer_accounts, trailing_months, currency
     )
     pool_total = max(cash_total - avg_expenses * buffer_months, Decimal("0"))
     attributed = distribute_pool(config.goals, pool_total, today)
@@ -95,6 +97,8 @@ def surplus(ctx: click.Context) -> None:
     cash_total = get_cash_total(entries, options, config.cash_accounts, currency)
     avg_expenses = get_avg_monthly_expenses(
         entries, options, config.expense_roots, config.expense_excludes, trailing_months, currency
+    ) + get_avg_monthly_transfer_expenses(
+        entries, options, config.expense_transfer_accounts, trailing_months, currency
     )
 
     render_surplus(cash_total, avg_expenses, buffer_months, currency)
@@ -117,6 +121,8 @@ def allocate(ctx: click.Context, amount: Decimal) -> None:
     cash_total = get_cash_total(entries, options, config.cash_accounts, currency)
     avg_expenses = get_avg_monthly_expenses(
         entries, options, config.expense_roots, config.expense_excludes, trailing_months, currency
+    ) + get_avg_monthly_transfer_expenses(
+        entries, options, config.expense_transfer_accounts, trailing_months, currency
     )
     pool_total = max(cash_total - avg_expenses * buffer_months, Decimal("0"))
     attributed = distribute_pool(config.goals, pool_total, today)

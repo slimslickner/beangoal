@@ -12,10 +12,14 @@ def load_config(entries) -> Config:
     expense_roots: list[str] = []
     income_roots: list[str] = []
     expense_excludes: list[str] = []
+    expense_transfer_accounts: list[str] = []
 
     for entry in entries:
-        if isinstance(entry, Open) and entry.meta.get("beangoal-cash-account"):
-            cash_accounts.append(entry.account)
+        if isinstance(entry, Open):
+            if entry.meta.get("beangoal-cash-account"):
+                cash_accounts.append(entry.account)
+            if entry.meta.get("beangoal-expense-transfer"):
+                expense_transfer_accounts.append(entry.account)
             continue
 
         if not isinstance(entry, Custom):
@@ -53,4 +57,5 @@ def load_config(entries) -> Config:
         expense_roots=expense_roots,
         income_roots=income_roots,
         expense_excludes=expense_excludes,
+        expense_transfer_accounts=expense_transfer_accounts,
     )
