@@ -6,17 +6,20 @@ from beanquery import query
 
 
 def get_account_balance(entries, options, account: str, currency: str = "USD") -> Decimal:
-    """Sum balance of a single account."""
+    """Sum balance of a single account, converting commodities to currency via price data."""
     try:
         _, rows = query.run_query(
             entries,
             options,
-            f"SELECT sum(position) WHERE account = '{account}' AND currency = '{currency}'",
+            f"SELECT CONVERT(sum(position), '{currency}') WHERE account = '{account}'",
         )
         if rows and rows[0][0] is not None:
-            pos = rows[0][0].get_only_position()
-            if pos is not None:
-                return Decimal(str(pos.units.number))
+            inv = rows[0][0]
+            total = Decimal("0")
+            for pos in inv:
+                if pos.units.currency == currency:
+                    total += Decimal(str(pos.units.number))
+            return total
     except Exception as e:
         print(f"Warning: could not query balance for {account}: {e}", file=sys.stderr)
     return Decimal("0")

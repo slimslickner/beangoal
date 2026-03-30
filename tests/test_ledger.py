@@ -104,6 +104,24 @@ option "operating_currency" "USD"
   Assets:Checking
 """
 
+LEDGER_WITH_COMMODITIES = """\
+option "operating_currency" "USD"
+
+2020-01-01 open Assets:Brokerage:Cash  USD
+2020-01-01 open Assets:Brokerage:NVDA  NVDA
+2020-01-01 open Equity:Opening         USD
+
+2026-01-01 price NVDA 200.00 USD
+
+2026-01-01 * "Opening"
+  Assets:Brokerage:Cash   5000.00 USD
+  Equity:Opening
+
+2026-01-01 * "Buy NVDA"
+  Assets:Brokerage:NVDA   100 NVDA {150.00 USD}
+  Assets:Brokerage:Cash  -15000.00 USD
+"""
+
 LEDGER_WITH_TRANSFERS = """\
 option "operating_currency" "USD"
 
@@ -215,6 +233,29 @@ def test_avg_monthly_expenses_excludes_taxes(ledger, monkeypatch):
     )
     # 6 months * (2500 + 600) / 6 = 3100
     assert avg == Decimal("3100")
+
+
+@pytest.fixture(scope="module")
+def ledger_with_commodities():
+    entries, errors, options = beancount_loader.load_string(LEDGER_WITH_COMMODITIES)
+    return entries, options
+
+
+def test_account_balance_commodity_converted_to_usd(ledger_with_commodities):
+    """100 NVDA at $200/share (price directive) should be $20,000 USD."""
+    entries, options = ledger_with_commodities
+    bal = get_account_balance(entries, options, "Assets:Brokerage:NVDA")
+    assert bal == Decimal("20000")
+
+
+def test_cash_total_with_commodity(ledger_with_commodities):
+    """Cash + commodity accounts sum correctly: $5000 cash - $15000 purchase + $20000 NVDA = $10000."""
+    entries, options = ledger_with_commodities
+    total = get_cash_total(
+        entries, options, ["Assets:Brokerage:Cash", "Assets:Brokerage:NVDA"]
+    )
+    # Cash: 5000 - 15000 = -10000; NVDA: 100 * 200 = 20000; total = 10000
+    assert total == Decimal("10000")
 
 
 @pytest.fixture(scope="module")

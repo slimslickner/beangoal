@@ -18,12 +18,12 @@ err_console = Console(stderr=True)
 @click.option(
     "--ledger", required=True, type=click.Path(exists=True), help="Path to main beancount ledger"
 )
-@click.option("--currency", default="USD", show_default=True)
+@click.option("--currency", default=None, help="Override operating currency (default: from ledger)")
 @click.option("--trailing-months", default=6, show_default=True, type=int)
 @click.option("--buffer-months", default=3, show_default=True, type=int)
 @click.pass_context
 def cli(
-    ctx: click.Context, ledger: str, currency: str, trailing_months: int, buffer_months: int
+    ctx: click.Context, ledger: str, currency: str | None, trailing_months: int, buffer_months: int
 ) -> None:
     """beangoal — savings goals tracking for beancount v3"""
     ctx.ensure_object(dict)
@@ -34,6 +34,10 @@ def cli(
             print(f"Warning: {err}", file=sys.stderr)
 
     config = load_config(entries)
+
+    if currency is None:
+        operating = options.get("operating_currency", ["USD"])
+        currency = operating[0] if operating else "USD"
 
     ctx.obj["entries"] = entries
     ctx.obj["options"] = options
