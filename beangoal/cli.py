@@ -7,7 +7,13 @@ from beancount import loader as beancount_loader
 from rich.console import Console
 
 from beangoal.allocator import compute_urgency_scores_with_balances, distribute_pool
-from beangoal.ledger import get_avg_monthly_expenses, get_avg_monthly_transfer_expenses, get_cash_total
+from beangoal.ledger import (
+    get_avg_monthly_expenses,
+    get_avg_monthly_transfer_expenses,
+    get_avg_monthly_transfer_expenses_by_account,
+    get_cash_balances,
+    get_cash_total,
+)
 from beangoal.loader import load_config
 from beangoal.report import console, render_status, render_surplus
 
@@ -74,13 +80,18 @@ def status(ctx: click.Context, show_archived: bool, show_contributions: bool, ve
 
     today = date.today()
     cash_total = get_cash_total(entries, options, config.cash_accounts, currency)
-    avg_expenses = get_avg_monthly_expenses(
+    avg_regular_expenses = get_avg_monthly_expenses(
         entries, options, config.expense_roots, config.expense_excludes, trailing_months, currency
-    ) + get_avg_monthly_transfer_expenses(
+    )
+    avg_transfer_expenses_by_account = get_avg_monthly_transfer_expenses_by_account(
         entries, options, config.expense_transfer_accounts, trailing_months, currency
     )
+    avg_transfer_expenses = sum(avg_transfer_expenses_by_account.values(), Decimal("0"))
+    avg_expenses = avg_regular_expenses + avg_transfer_expenses
     pool_total = max(cash_total - avg_expenses * buffer_months, Decimal("0"))
     attributed = distribute_pool(config.goals, pool_total, today)
+
+    cash_balances = get_cash_balances(entries, options, config.cash_accounts, currency) if verbose else None
 
     render_status(
         config.goals,
@@ -92,7 +103,10 @@ def status(ctx: click.Context, show_archived: bool, show_contributions: bool, ve
         verbose=verbose,
         cash_total=cash_total,
         avg_expenses=avg_expenses,
+        avg_regular_expenses=avg_regular_expenses,
+        avg_transfer_expenses_by_account=avg_transfer_expenses_by_account,
         buffer_months=buffer_months,
+        cash_balances=cash_balances,
     )
 
 

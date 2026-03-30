@@ -33,6 +33,53 @@ def get_cash_total(entries, options, cash_accounts: list[str], currency: str = "
     return total
 
 
+def get_cash_balances(
+    entries, options, cash_accounts: list[str], currency: str = "USD"
+) -> dict[str, Decimal]:
+    """Return per-account balances for all cash accounts."""
+    return {acct: get_account_balance(entries, options, acct, currency) for acct in cash_accounts}
+
+
+def get_avg_monthly_transfer_expenses_by_account(
+    entries,
+    options,
+    expense_transfer_accounts: list[str],
+    trailing_months: int = 6,
+    currency: str = "USD",
+) -> dict[str, Decimal]:
+    """Return per-account average monthly transfer expenses."""
+    result: dict[str, Decimal] = {}
+    if not expense_transfer_accounts:
+        return result
+
+    end = date.today()
+    start = end - timedelta(days=trailing_months * 30)
+
+    for account in expense_transfer_accounts:
+        where = (
+            f"account = '{account}'"
+            f" AND date >= {start.isoformat()} AND date <= {end.isoformat()}"
+            f" AND currency = '{currency}'"
+        )
+        try:
+            _, rows = query.run_query(
+                entries,
+                options,
+                f"SELECT sum(position) WHERE {where}",
+            )
+            total = Decimal("0")
+            if rows and rows[0][0] is not None:
+                pos = rows[0][0].get_only_position()
+                if pos is not None:
+                    total = Decimal(str(pos.units.number))
+            result[account] = total / trailing_months
+        except Exception as e:
+            print(f"Warning: could not compute transfer expense average for {account}: {e}", file=sys.stderr)
+            result[account] = Decimal("0")
+
+    return result
+
+
 def get_avg_monthly_transfer_expenses(
     entries,
     options,
