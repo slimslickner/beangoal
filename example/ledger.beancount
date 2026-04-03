@@ -106,25 +106,25 @@ option "operating_currency" "USD"
 
 ; ── beangoal configuration ─────────────────────────────────────
 
-; Savings goals: "savings-goal" <name> <target> <deadline>
-2024-01-01 custom "savings-goal" "house-down-payment" "100000" "2027-06-01"
-2024-01-01 custom "savings-goal" "college-fund"       "200000" "2036-09-01"
-2024-01-01 custom "savings-goal" "car"                "15000"  "2026-12-01"
+; Savings goals: "beangoal" "create-goal" <name> <target> <deadline>
+2024-01-01 custom "beangoal" "create-goal" "house-down-payment" "100000" "2027-06-01"
+2024-01-01 custom "beangoal" "create-goal" "college-fund"       "200000" "2036-09-01"
+2024-01-01 custom "beangoal" "create-goal" "car"                "15000"  "2026-12-01"
 
-; Archived goals: "savings-goal-archived" <name> <target> <deadline>
-; 2023-06-01 custom "savings-goal-archived" "emergency-fund" "25000" "2023-01-01"
+; Archive a goal: "beangoal" "archive" <name>
+; 2023-06-01 custom "beangoal" "archive" "emergency-fund"
 
 ; Expense/income roots for operating buffer calculation
-2024-01-01 custom "expense-accounts" "Expenses"
-2024-01-01 custom "income-accounts"  "Income"
+2024-01-01 custom "beangoal" "expense-accounts" "Expenses"
+2024-01-01 custom "beangoal" "income-accounts"  "Income"
 
 ; Expense sub-trees to exclude from the average
-2024-01-01 custom "expense-exclude" "Expenses:Taxes"
-2024-01-01 custom "expense-exclude" "Expenses:Transfers"
+2024-01-01 custom "beangoal" "expense-exclude" "Expenses:Taxes"
+2024-01-01 custom "beangoal" "expense-exclude" "Expenses:Transfers"
 
 ; Manual goal allocations — append new entries over time
-; Goals with no entries are auto-distributed from the remaining pool
-2024-06-01 custom "goal-allocation" "college-fund" "10000"
-2024-12-01 custom "goal-allocation" "college-fund" "8000"
-2025-06-01 custom "goal-allocation" "college-fund" "9000"
-2026-01-01 custom "goal-allocation" "college-fund" "9000"
+; Goals with no allocate entries are auto-distributed from the remaining pool
+2024-06-01 custom "beangoal" "allocate" "college-fund" 10000
+2024-12-01 custom "beangoal" "allocate" "college-fund" 8000
+2025-06-01 custom "beangoal" "allocate" "college-fund" 9000
+2026-01-01 custom "beangoal" "allocate" "college-fund" 9000

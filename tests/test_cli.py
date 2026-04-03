@@ -62,9 +62,10 @@ def test_status_show_archived_flag(runner):
         textwrap.dedent("""\
         2020-01-01 open Assets:Checking USD
           beangoal-cash-account: TRUE
-        2024-01-01 custom "savings-goal"          "house" "100000" "2027-06-01"
-        2024-01-01 custom "savings-goal-archived" "done"  "5000"   "2023-01-01"
-        2024-01-01 custom "expense-accounts"      "Expenses"
+        2024-01-01 custom "beangoal" "create-goal"      "house" "100000" "2027-06-01"
+        2024-01-01 custom "beangoal" "create-goal"      "done"  "5000"   "2023-01-01"
+        2024-06-01 custom "beangoal" "archive"          "done"
+        2024-01-01 custom "beangoal" "expense-accounts" "Expenses"
     """)
     )
     ledger.flush()
@@ -127,7 +128,7 @@ def test_allocate_shows_transaction(runner):
 
 def test_allocate_shows_goal_allocation_directives(runner):
     result = invoke(runner, "allocate", "1000")
-    assert "goal-allocation" in result.output
+    assert '"beangoal" "allocate"' in result.output
 
 
 def test_allocate_no_eligible_goals(runner):
@@ -137,8 +138,9 @@ def test_allocate_no_eligible_goals(runner):
         textwrap.dedent("""\
         2020-01-01 open Assets:Checking USD
           beangoal-cash-account: TRUE
-        2024-01-01 custom "savings-goal-archived" "old" "5000" "2023-01-01"
-        2024-01-01 custom "expense-accounts" "Expenses"
+        2024-01-01 custom "beangoal" "create-goal"      "old" "5000" "2023-01-01"
+        2024-06-01 custom "beangoal" "archive"          "old"
+        2024-01-01 custom "beangoal" "expense-accounts" "Expenses"
     """)
     )
     ledger.flush()
@@ -156,12 +158,9 @@ def test_archive_exits_zero(runner):
     assert result.exit_code == 0
 
 
-def test_archive_shows_remove_and_add(runner):
+def test_archive_shows_directive(runner):
     result = invoke(runner, "archive", "car")
-    assert "REMOVE" in result.output
-    assert "ADD" in result.output
-    assert "savings-goal-archived" in result.output
-    assert "car" in result.output
+    assert '"beangoal" "archive" "car"' in result.output
 
 
 def test_archive_unknown_goal_exits_nonzero(runner):

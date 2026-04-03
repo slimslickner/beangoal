@@ -11,17 +11,17 @@ from beangoal.models import Config
 def load(content: str) -> Config:
     """Parse a beancount string and return the resulting Config."""
     entries, _, _ = beancount_loader.load_string(textwrap.dedent(content))
-    config, _ = load_config(entries)
+    config, _, _ = load_config(entries)
     return config
 
 
-def load_with_warnings(content: str) -> tuple[Config, list[str]]:
+def load_with_diagnostics(content: str) -> tuple[Config, list[str], list[str]]:
     entries, _, _ = beancount_loader.load_string(textwrap.dedent(content))
     return load_config(entries)
 
 
 def test_basic_goal_parsed():
-    config = load('2024-01-01 custom "savings-goal" "house" "100000" "2027-06-01"')
+    config = load('2024-01-01 custom "beangoal" "create-goal" "house" "100000" "2027-06-01"')
     assert len(config.goals) == 1
     g = config.goals[0]
     assert g.name == "house"
@@ -31,16 +31,28 @@ def test_basic_goal_parsed():
 
 
 def test_archived_goal_parsed():
-    config = load('2024-01-01 custom "savings-goal-archived" "old-goal" "5000" "2023-01-01"')
+    config = load("""\
+        2024-01-01 custom "beangoal" "create-goal" "old-goal" "5000" "2023-01-01"
+        2024-06-01 custom "beangoal" "archive"     "old-goal"
+    """)
     assert len(config.goals) == 1
     assert config.goals[0].archived is True
     assert config.goals[0].name == "old-goal"
 
 
+def test_archive_before_create_in_file_works():
+    """archive can appear before create-goal in the file; beancount sorts by date."""
+    config = load("""\
+        2024-06-01 custom "beangoal" "archive"     "house"
+        2024-01-01 custom "beangoal" "create-goal" "house" "100000" "2027-06-01"
+    """)
+    assert config.goals[0].archived is True
+
+
 def test_multiple_goals():
     config = load("""\
-        2024-01-01 custom "savings-goal" "house" "100000" "2027-06-01"
-        2024-01-01 custom "savings-goal" "car"   "15000"  "2026-12-01"
+        2024-01-01 custom "beangoal" "create-goal" "house" "100000" "2027-06-01"
+        2024-01-01 custom "beangoal" "create-goal" "car"   "15000"  "2026-12-01"
     """)
     names = {g.name for g in config.goals}
     assert names == {"house", "car"}
@@ -68,8 +80,8 @@ def test_cash_account_without_flag_excluded():
 
 def test_expense_and_income_roots():
     config = load("""\
-        2024-01-01 custom "expense-accounts" "Expenses"
-        2024-01-01 custom "income-accounts"  "Income"
+        2024-01-01 custom "beangoal" "expense-accounts" "Expenses"
+        2024-01-01 custom "beangoal" "income-accounts"  "Income"
     """)
     assert config.expense_roots == ["Expenses"]
     assert config.income_roots == ["Income"]
@@ -77,16 +89,16 @@ def test_expense_and_income_roots():
 
 def test_expense_excludes():
     config = load("""\
-        2024-01-01 custom "expense-exclude" "Expenses:Taxes"
-        2024-01-01 custom "expense-exclude" "Expenses:Transfers"
+        2024-01-01 custom "beangoal" "expense-exclude" "Expenses:Taxes"
+        2024-01-01 custom "beangoal" "expense-exclude" "Expenses:Transfers"
     """)
     assert config.expense_excludes == ["Expenses:Taxes", "Expenses:Transfers"]
 
 
 def test_goal_allocation_single():
     config = load("""\
-        2024-01-01 custom "savings-goal"    "college" "200000" "2036-09-01"
-        2024-06-01 custom "goal-allocation" "college" "10000"
+        2024-01-01 custom "beangoal" "create-goal" "college" "200000" "2036-09-01"
+        2024-06-01 custom "beangoal" "allocate"    "college" 10000
     """)
     g = config.goals[0]
     assert g.is_manual is True
@@ -97,10 +109,10 @@ def test_goal_allocation_single():
 
 def test_goal_allocation_multiple_contributions_accumulate():
     config = load("""\
-        2024-01-01 custom "savings-goal"    "college" "200000" "2036-09-01"
-        2024-06-01 custom "goal-allocation" "college" "10000"
-        2024-12-01 custom "goal-allocation" "college" "8000"
-        2025-06-01 custom "goal-allocation" "college" "9000"
+        2024-01-01 custom "beangoal" "create-goal" "college" "200000" "2036-09-01"
+        2024-06-01 custom "beangoal" "allocate"    "college" 10000
+        2024-12-01 custom "beangoal" "allocate"    "college" 8000
+        2025-06-01 custom "beangoal" "allocate"    "college" 9000
     """)
     g = config.goals[0]
     assert g.manual_balance == Decimal("27000")
@@ -113,17 +125,39 @@ def test_goal_allocation_multiple_contributions_accumulate():
 
 
 def test_goal_without_allocation_is_auto():
-    config = load('2024-01-01 custom "savings-goal" "house" "100000" "2027-06-01"')
+    config = load('2024-01-01 custom "beangoal" "create-goal" "house" "100000" "2027-06-01"')
     assert config.goals[0].is_manual is False
     assert config.goals[0].manual_balance == Decimal("0")
     assert config.goals[0].contributions == []
 
 
-def test_goal_allocation_for_unknown_goal_emits_warning():
-    config, warnings = load_with_warnings('2024-01-01 custom "goal-allocation" "nonexistent" "5000"')
+def test_allocate_for_unknown_goal_emits_warning():
+    config, warnings, errors = load_with_diagnostics(
+        '2024-01-01 custom "beangoal" "allocate" "nonexistent" 5000'
+    )
     assert config.goals == []
     assert len(warnings) == 1
     assert "nonexistent" in warnings[0]
+    assert errors == []
+
+
+def test_archive_for_unknown_goal_emits_warning():
+    config, warnings, errors = load_with_diagnostics(
+        '2024-01-01 custom "beangoal" "archive" "nonexistent"'
+    )
+    assert config.goals == []
+    assert len(warnings) == 1
+    assert "nonexistent" in warnings[0]
+    assert errors == []
+
+
+def test_unknown_action_emits_error():
+    config, warnings, errors = load_with_diagnostics(
+        '2024-01-01 custom "beangoal" "typo" "house"'
+    )
+    assert len(errors) == 1
+    assert "typo" in errors[0]
+    assert warnings == []
 
 
 def test_expense_transfer_accounts_parsed():
@@ -136,7 +170,7 @@ def test_expense_transfer_accounts_parsed():
 
 
 def test_empty_entries():
-    config, warnings = load_config([])
+    config, warnings, errors = load_config([])
     assert config.goals == []
     assert config.cash_accounts == []
     assert config.expense_roots == []
@@ -149,14 +183,15 @@ def test_full_config():
     config = load("""\
         2020-01-01 open Assets:Checking USD
           beangoal-cash-account: TRUE
-        2024-01-01 custom "savings-goal"          "house"   "100000" "2027-06-01"
-        2024-01-01 custom "savings-goal"          "college" "200000" "2036-09-01"
-        2024-01-01 custom "savings-goal-archived" "car"     "15000"  "2025-01-01"
-        2024-01-01 custom "expense-accounts"      "Expenses"
-        2024-01-01 custom "income-accounts"       "Income"
-        2024-01-01 custom "expense-exclude"       "Expenses:Taxes"
-        2024-06-01 custom "goal-allocation"       "college" "10000"
-        2024-12-01 custom "goal-allocation"       "college" "8000"
+        2024-01-01 custom "beangoal" "create-goal"      "house"   "100000" "2027-06-01"
+        2024-01-01 custom "beangoal" "create-goal"      "college" "200000" "2036-09-01"
+        2024-01-01 custom "beangoal" "create-goal"      "car"     "15000"  "2025-01-01"
+        2024-06-01 custom "beangoal" "archive"          "car"
+        2024-01-01 custom "beangoal" "expense-accounts" "Expenses"
+        2024-01-01 custom "beangoal" "income-accounts"  "Income"
+        2024-01-01 custom "beangoal" "expense-exclude"  "Expenses:Taxes"
+        2024-06-01 custom "beangoal" "allocate"         "college" 10000
+        2024-12-01 custom "beangoal" "allocate"         "college" 8000
     """)
     assert len(config.goals) == 3
     active = [g for g in config.goals if not g.archived]

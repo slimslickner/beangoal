@@ -39,9 +39,13 @@ def cli(
         for err in errors:
             print(f"Warning: {err}", file=sys.stderr)
 
-    config, config_warnings = load_config(entries)
+    config, config_warnings, config_errors = load_config(entries)
     for w in config_warnings:
         print(f"Warning: {w}", file=sys.stderr)
+    for e in config_errors:
+        print(f"Error: {e}", file=sys.stderr)
+    if config_errors:
+        sys.exit(1)
 
     if currency is None:
         operating = options.get("operating_currency", ["USD"])
@@ -199,7 +203,7 @@ def allocate(ctx: click.Context, amount: Decimal) -> None:
     console.print("  Paste into goals.beancount:")
     console.print()
     for name, alloc in allocations.items():
-        console.print(f'  {today_str} custom "goal-allocation" "{name}" "{alloc}"')
+        console.print(f'  {today_str} custom "beangoal" "allocate" "{name}" {alloc}')
     console.print()
 
 
@@ -215,19 +219,9 @@ def archive(ctx: click.Context, goal_name: str) -> None:
         console.print(f"[red]Goal '{goal_name}' not found.[/red]")
         raise SystemExit(1)
 
-    date_str = "2024-01-01"  # placeholder — user sets the date
-    console.print("\n  To archive this goal, replace in goals.beancount:\n")
-    console.print("  REMOVE:")
-    console.print(
-        f'  {date_str} custom "savings-goal"'
-        f'"{goal.name}" "{goal.target}" "{goal.deadline.isoformat()}"'
-    )
-    console.print()
-    console.print("  ADD:")
-    console.print(
-        f'  {date_str} custom "savings-goal-archived"'
-        f'"{goal.name}" "{goal.target}" "{goal.deadline.isoformat()}"'
-    )
+    today_str = date.today().isoformat()
+    console.print("\n  To archive this goal, add to your ledger:\n")
+    console.print(f'  {today_str} custom "beangoal" "archive" "{goal.name}"')
     console.print()
     console.print("  Archived goals are hidden from `status` by default.")
     console.print("  Use `beangoal status --show-archived` to display them.")
