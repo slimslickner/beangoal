@@ -117,6 +117,14 @@ def render_status(
                     weight_pct = int(pool_weights[goal.name] * 100)
                     console.print(f"    [dim]pool weight: {weight_pct}%  ({days_remaining} days remaining)[/dim]")
 
+    for goal in active:
+        if goal.is_manual and goal.manual_balance > goal.target:
+            overage = goal.manual_balance - goal.target
+            console.print(
+                f"  [yellow]Warning: ${overage:,.0f} from {goal.name} was overfunded"
+                f" and added to the general bucket[/yellow]"
+            )
+
     render_group(active)
 
     if show_archived and archived:

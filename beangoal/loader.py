@@ -6,8 +6,9 @@ from beancount.core.data import Custom, Open
 from beangoal.models import Config, Goal
 
 
-def load_config(entries) -> Config:
+def load_config(entries) -> tuple[Config, list[str]]:
     goals_map: dict[str, Goal] = {}
+    warnings: list[str] = []
     cash_accounts: list[str] = []
     expense_roots: list[str] = []
     income_roots: list[str] = []
@@ -50,6 +51,8 @@ def load_config(entries) -> Config:
             amount = Decimal(vals[1])
             if goal_name in goals_map:
                 goals_map[goal_name].contributions.append((entry.date, amount))
+            else:
+                warnings.append(f"goal-allocation references unknown goal '{goal_name}' ({entry.meta['filename']}:{entry.meta['lineno']})")
 
     return Config(
         goals=list(goals_map.values()),
@@ -58,4 +61,4 @@ def load_config(entries) -> Config:
         income_roots=income_roots,
         expense_excludes=expense_excludes,
         expense_transfer_accounts=expense_transfer_accounts,
-    )
+    ), warnings

@@ -11,6 +11,12 @@ from beangoal.models import Config
 def load(content: str) -> Config:
     """Parse a beancount string and return the resulting Config."""
     entries, _, _ = beancount_loader.load_string(textwrap.dedent(content))
+    config, _ = load_config(entries)
+    return config
+
+
+def load_with_warnings(content: str) -> tuple[Config, list[str]]:
+    entries, _, _ = beancount_loader.load_string(textwrap.dedent(content))
     return load_config(entries)
 
 
@@ -113,9 +119,11 @@ def test_goal_without_allocation_is_auto():
     assert config.goals[0].contributions == []
 
 
-def test_goal_allocation_for_unknown_goal_is_ignored():
-    config = load('2024-01-01 custom "goal-allocation" "nonexistent" "5000"')
+def test_goal_allocation_for_unknown_goal_emits_warning():
+    config, warnings = load_with_warnings('2024-01-01 custom "goal-allocation" "nonexistent" "5000"')
     assert config.goals == []
+    assert len(warnings) == 1
+    assert "nonexistent" in warnings[0]
 
 
 def test_expense_transfer_accounts_parsed():
@@ -128,7 +136,7 @@ def test_expense_transfer_accounts_parsed():
 
 
 def test_empty_entries():
-    config = load_config([])
+    config, warnings = load_config([])
     assert config.goals == []
     assert config.cash_accounts == []
     assert config.expense_roots == []

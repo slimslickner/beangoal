@@ -31,14 +31,15 @@ def distribute_pool(
 
     attributed: dict[str, Decimal] = {}
 
-    # Pass 1: manual goals
-    manual_total = sum(g.manual_balance for g in manual)
-    if manual_total > pool_total and manual_total > 0:
+    # Pass 1: manual goals — cap each at target before proration
+    effective = {g.name: min(g.manual_balance, g.target) for g in manual}
+    effective_total = sum(effective.values())
+    if effective_total > pool_total and effective_total > 0:
         for g in manual:
-            attributed[g.name] = (g.manual_balance / manual_total) * pool_total
+            attributed[g.name] = (effective[g.name] / effective_total) * pool_total
     else:
         for g in manual:
-            attributed[g.name] = g.manual_balance
+            attributed[g.name] = effective[g.name]
 
     reserved = sum(attributed.values())
     remaining = max(pool_total - reserved, Decimal("0"))

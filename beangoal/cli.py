@@ -39,7 +39,9 @@ def cli(
         for err in errors:
             print(f"Warning: {err}", file=sys.stderr)
 
-    config = load_config(entries)
+    config, config_warnings = load_config(entries)
+    for w in config_warnings:
+        print(f"Warning: {w}", file=sys.stderr)
 
     if currency is None:
         operating = options.get("operating_currency", ["USD"])

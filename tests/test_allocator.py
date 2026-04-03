@@ -210,6 +210,18 @@ def test_multiple_auto_goals_capped_excess_redistributed():
     assert abs(total - Decimal("117609")) < Decimal("0.01")
 
 
+def test_manual_goal_capped_at_target_excess_goes_to_auto():
+    """Manual goal allocation exceeding target is capped; excess flows to auto goals."""
+    goals = [
+        make_goal("gate", 900, date(2026, 7, 1), contributions=[(date(2026, 4, 2), 1_000)]),
+        make_goal("house", 100_000, date(2027, 6, 1)),
+    ]
+    attributed = distribute_pool(goals, Decimal("50000"), TODAY)
+    assert attributed["gate"] == Decimal("900")
+    # house gets the remaining 49100
+    assert abs(attributed["house"] - Decimal("49100")) < Decimal("0.01")
+
+
 def test_multiple_manual_contributions_use_sum():
     goals = [
         make_goal(
