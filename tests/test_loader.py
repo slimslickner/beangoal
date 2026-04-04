@@ -61,9 +61,9 @@ def test_multiple_goals():
 def test_cash_accounts_parsed():
     config = load("""\
         2020-01-01 open Assets:Checking         USD
-          beangoal-cash-account: TRUE
+          cash-account: TRUE
         2020-01-01 open Assets:Savings:HYSA     USD
-          beangoal-cash-account: TRUE
+          cash-account: TRUE
         2020-01-01 open Assets:Investments:529  USD
     """)
     assert config.cash_accounts == ["Assets:Checking", "Assets:Savings:HYSA"]
@@ -73,7 +73,7 @@ def test_cash_account_without_flag_excluded():
     config = load("""\
         2020-01-01 open Assets:Checking     USD
         2020-01-01 open Assets:Savings:HYSA USD
-          beangoal-cash-account: TRUE
+          cash-account: TRUE
     """)
     assert config.cash_accounts == ["Assets:Savings:HYSA"]
 
@@ -152,9 +152,7 @@ def test_archive_for_unknown_goal_emits_warning():
 
 
 def test_unknown_action_emits_error():
-    config, warnings, errors = load_with_diagnostics(
-        '2024-01-01 custom "beangoal" "typo" "house"'
-    )
+    config, warnings, errors = load_with_diagnostics('2024-01-01 custom "beangoal" "typo" "house"')
     assert len(errors) == 1
     assert "typo" in errors[0]
     assert warnings == []
@@ -182,7 +180,7 @@ def test_empty_entries():
 def test_full_config():
     config = load("""\
         2020-01-01 open Assets:Checking USD
-          beangoal-cash-account: TRUE
+          cash-account: TRUE
         2024-01-01 custom "beangoal" "create-goal"      "house"   "100000" "2027-06-01"
         2024-01-01 custom "beangoal" "create-goal"      "college" "200000" "2036-09-01"
         2024-01-01 custom "beangoal" "create-goal"      "car"     "15000"  "2025-01-01"

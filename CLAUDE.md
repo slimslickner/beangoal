@@ -20,7 +20,7 @@ uv run beangoal --ledger example/ledger.beancount status  # manual smoke test
 
 **`models.py`** — two dataclasses: `Goal` (name, target, deadline, contributions list) and `Config` (goals, cash accounts, expense roots, excludes, expense transfer accounts). `Goal.is_manual` is True when it has `allocate` contributions; `Goal.manual_balance` sums them.
 
-**`loader.py`** — reads beancount `Open` directives (for account metadata) and `Custom "beangoal"` directives (for goals and config). Goal state is derived by processing actions in date order: `create-goal` → `allocate`* → `archive`. Unknown actions are hard errors; unknown goal references in `allocate`/`archive` are warnings. Returns `(Config, warnings, errors)`. Config lives in the ledger itself, often via beancount's `include` directive from a separate goals file.
+**`loader.py`** — reads beancount `Open` directives (for account metadata) and `Custom "beangoal"` directives (for goals and config). Goal state is derived by processing actions in date order: `create-goal` → `allocate`\* → `archive`. Unknown actions are hard errors; unknown goal references in `allocate`/`archive` are warnings. Returns `(Config, warnings, errors)`. Config lives in the ledger itself, often via beancount's `include` directive from a separate goals file.
 
 **`ledger.py`** — thin wrappers around `beanquery.query.run_query`. Uses SQL-like BQL queries. The expense average uses `account ~` regex matching on account trees. Transfer expenses use `any_meta('matched_transfer_account') IS NOT NULL` to detect postings matched by the beancount zerosum plugin.
 
@@ -33,10 +33,12 @@ uv run beangoal --ledger example/ledger.beancount status  # manual smoke test
 beangoal reads two kinds of config from the ledger:
 
 **Account `open` directive metadata:**
-- `beangoal-cash-account: TRUE` — includes account in the savings pool
+
+- `cash-account: TRUE` — includes account in the savings pool
 - `beangoal-expense-transfer: TRUE` — transfers to this account counted as expenses (for zerosum-matched transfers)
 
 **`custom "beangoal"` directives** — all use `custom "beangoal" "<action>" ...`:
+
 - `"create-goal" <name> <target> <deadline>` — define a goal
 - `"allocate" <name> <amount>` — manual allocation to a goal (bare number, no quotes)
 - `"archive" <name>` — mark a goal archived (processed in date order, so can appear after create-goal)

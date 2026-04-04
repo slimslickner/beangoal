@@ -18,7 +18,7 @@ def load_config(entries) -> tuple[Config, list[str], list[str]]:
 
     for entry in entries:
         if isinstance(entry, Open):
-            if entry.meta.get("beangoal-cash-account"):
+            if entry.meta.get("cash-account"):
                 cash_accounts.append(entry.account)
             if entry.meta.get("beangoal-expense-transfer"):
                 expense_transfer_accounts.append(entry.account)
@@ -71,11 +71,15 @@ def load_config(entries) -> tuple[Config, list[str], list[str]]:
         else:
             errors.append(f"unknown beangoal action '{action}' ({loc})")
 
-    return Config(
-        goals=list(goals_map.values()),
-        cash_accounts=cash_accounts,
-        expense_roots=expense_roots,
-        income_roots=income_roots,
-        expense_excludes=expense_excludes,
-        expense_transfer_accounts=expense_transfer_accounts,
-    ), warnings, errors
+    return (
+        Config(
+            goals=list(goals_map.values()),
+            cash_accounts=cash_accounts,
+            expense_roots=expense_roots,
+            income_roots=income_roots,
+            expense_excludes=expense_excludes,
+            expense_transfer_accounts=expense_transfer_accounts,
+        ),
+        warnings,
+        errors,
+    )

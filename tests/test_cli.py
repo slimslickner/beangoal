@@ -61,7 +61,7 @@ def test_status_show_archived_flag(runner):
     ledger.write(
         textwrap.dedent("""\
         2020-01-01 open Assets:Checking USD
-          beangoal-cash-account: TRUE
+          cash-account: TRUE
         2024-01-01 custom "beangoal" "create-goal"      "house" "100000" "2027-06-01"
         2024-01-01 custom "beangoal" "create-goal"      "done"  "5000"   "2023-01-01"
         2024-06-01 custom "beangoal" "archive"          "done"
@@ -137,7 +137,7 @@ def test_allocate_no_eligible_goals(runner):
     ledger.write(
         textwrap.dedent("""\
         2020-01-01 open Assets:Checking USD
-          beangoal-cash-account: TRUE
+          cash-account: TRUE
         2024-01-01 custom "beangoal" "create-goal"      "old" "5000" "2023-01-01"
         2024-06-01 custom "beangoal" "archive"          "old"
         2024-01-01 custom "beangoal" "expense-accounts" "Expenses"
